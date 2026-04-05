@@ -29,6 +29,10 @@ public class Edge<E>{
         return v;
     }
 
+    public void setElement(E element) {
+        this.element = element;
+    }
+
     /**
      * Checks if this Edge is equal to another object.
      *

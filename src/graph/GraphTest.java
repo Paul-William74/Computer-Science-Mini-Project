@@ -7,17 +7,28 @@ public class GraphTest {
     public static void main(String[] args) {
 
         // -------------------------------
-        // CREATE GRAPH
+        // CREATE GRAPH (NOW USING NODE)
         // -------------------------------
-        Graph<String, Integer> graph = new AdjacencyListGraph<>();
+        Graph<Node, Integer> graph = new AdjacencyListGraph<>();
 
-        // Insert vertices
-        Vertex<String> A = graph.insertVertex("A");
-        Vertex<String> B = graph.insertVertex("B");
-        Vertex<String> C = graph.insertVertex("C");
-        Vertex<String> D = graph.insertVertex("D");
+        // Insert vertices (nodes with coordinates)
+        Vertex<Node> A = graph.insertVertex(new Node(1, 0, 0, 1));
+        Vertex<Node> B = graph.insertVertex(new Node(2, 1, 0, 1));
+        Vertex<Node> C = graph.insertVertex(new Node(3, 0, 1, 1));
+        Vertex<Node> D = graph.insertVertex(new Node(4, 1, 1, 1));
 
-        // Insert edges (undirected)
+        // -------------------------------
+        // TEST DUPLICATE VERTEX HANDLING
+        // -------------------------------
+        Vertex<Node> duplicateA = graph.insertVertex(new Node(1, 0, 0, 1));
+
+        System.out.println("Testing duplicate vertex insertion:");
+        System.out.println("Total vertices (should NOT increase if handled properly): "
+                + graph.numVertices());
+
+        // -------------------------------
+        // INSERT EDGES (UNDIRECTED)
+        // -------------------------------
         graph.insertEdge(A, B, 5);
         graph.insertEdge(A, C, 3);
         graph.insertEdge(B, D, 2);
@@ -26,14 +37,14 @@ public class GraphTest {
         // -------------------------------
         // BASIC GRAPH INFO
         // -------------------------------
-        System.out.println("Number of vertices: " + graph.numVertices());
+        System.out.println("\nNumber of vertices: " + graph.numVertices());
         System.out.println("Number of edges: " + graph.numEdges());
 
         // -------------------------------
         // TEST NEIGHBORS
         // -------------------------------
         System.out.println("\nNeighbors of A:");
-        for (Vertex<String> v : graph.getNeighbors(A)) {
+        for (Vertex<Node> v : graph.getNeighbors(A)) {
             System.out.println(v.getElement());
         }
 
@@ -52,14 +63,16 @@ public class GraphTest {
         // TEST DFS
         // -------------------------------
         System.out.println("\nDFS Traversal starting from A:");
-        Set<Vertex<String>> visitedDFS = new HashSet<>();
-        Map<Vertex<String>, Vertex<String>> parentDFS = new HashMap<>();
+        Set<Vertex<Node>> visitedDFS = new HashSet<>();
+        Map<Vertex<Node>, Vertex<Node>> parentDFS = new HashMap<>();
+
         GraphAlgorithms.DFS(graph, A, visitedDFS, parentDFS);
 
         System.out.println("DFS Forest (Parent relationships):");
-        for (Map.Entry<Vertex<String>, Vertex<String>> entry : parentDFS.entrySet()) {
-            Vertex<String> child = entry.getKey();
-            Vertex<String> parent = entry.getValue();
+        for (Map.Entry<Vertex<Node>, Vertex<Node>> entry : parentDFS.entrySet()) {
+            Vertex<Node> child = entry.getKey();
+            Vertex<Node> parent = entry.getValue();
+
             System.out.println("Vertex " + child.getElement() +
                     " discovered from " + parent.getElement());
         }
@@ -68,21 +81,23 @@ public class GraphTest {
         // TEST BFS
         // -------------------------------
         System.out.println("\nBFS Traversal starting from A:");
-        Set<Vertex<String>> visitedBFS = new HashSet<>();
-        Map<Vertex<String>, Vertex<String>> parentBFS = new HashMap<>();
-        Map<Vertex<String>, Integer> distance = new HashMap<>();
+        Set<Vertex<Node>> visitedBFS = new HashSet<>();
+        Map<Vertex<Node>, Vertex<Node>> parentBFS = new HashMap<>();
+        Map<Vertex<Node>, Integer> distance = new HashMap<>();
 
         GraphAlgorithms.BFS(graph, A, visitedBFS, parentBFS, distance);
 
         System.out.println("BFS Distances from A:");
-        for (Map.Entry<Vertex<String>, Integer> entry : distance.entrySet()) {
-            System.out.println("Distance from A to " + entry.getKey().getElement() + " = " + entry.getValue());
+        for (Map.Entry<Vertex<Node>, Integer> entry : distance.entrySet()) {
+            System.out.println("Distance from A to " + entry.getKey().getElement()
+                    + " = " + entry.getValue());
         }
 
         System.out.println("\nBFS Forest (Parent relationships):");
-        for (Map.Entry<Vertex<String>, Vertex<String>> entry : parentBFS.entrySet()) {
-            Vertex<String> child = entry.getKey();
-            Vertex<String> parent = entry.getValue();
+        for (Map.Entry<Vertex<Node>, Vertex<Node>> entry : parentBFS.entrySet()) {
+            Vertex<Node> child = entry.getKey();
+            Vertex<Node> parent = entry.getValue();
+
             System.out.println("Vertex " + child.getElement() +
                     " discovered from " + parent.getElement());
         }
@@ -90,10 +105,11 @@ public class GraphTest {
         // -------------------------------
         // TEST PATH RECONSTRUCTION
         // -------------------------------
-        List<Vertex<String>> path = GraphAlgorithms.constructPath(A, D, parentBFS);
-        System.out.print("Path from A to D using BFS: ");
+        System.out.print("\nPath from A to D using BFS: ");
+        List<Vertex<Node>> path = GraphAlgorithms.constructPath(A, D, parentBFS);
+
         if (!path.isEmpty()) {
-            for (Vertex<String> v : path) {
+            for (Vertex<Node> v : path) {
                 System.out.print(v.getElement() + " ");
             }
             System.out.println();
@@ -104,6 +120,16 @@ public class GraphTest {
         // -------------------------------
         // TEST CONNECTIVITY
         // -------------------------------
-        System.out.println("\nIs the graph connected? " + GraphAlgorithms.isConnected(graph));
+        System.out.println("\nIs the graph connected? "
+                + GraphAlgorithms.isConnected(graph));
+
+        // -------------------------------
+        // TEST SAFE VERTEX REMOVAL
+        // -------------------------------
+        System.out.println("\nRemoving vertex B safely:");
+        graph.removeVertex(B);
+
+        System.out.println("Vertices after removal: " + graph.numVertices());
+        System.out.println("Edges after removal: " + graph.numEdges());
     }
 }
