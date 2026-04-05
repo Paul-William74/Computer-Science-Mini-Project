@@ -52,27 +52,58 @@ public class GraphTest {
         // TEST DFS
         // -------------------------------
         System.out.println("\nDFS Traversal starting from A:");
+        Set<Vertex<String>> visitedDFS = new HashSet<>();
+        Map<Vertex<String>, Vertex<String>> parentDFS = new HashMap<>();
+        GraphAlgorithms.DFS(graph, A, visitedDFS, parentDFS);
 
-        Set<Vertex<String>> visited = new LinkedHashSet<>();
-        Map<Vertex<String>, Vertex<String>> forest = new HashMap<>();
-
-        GraphAlgorithms.DFS(graph, A, visited, forest);
-
-        for (Vertex<String> v : visited) {
-            System.out.println("Visited: " + v.getElement());
-        }
-
-        // -------------------------------
-        // DFS FOREST (PARENT-CHILD)
-        // -------------------------------
-        System.out.println("\nDFS Forest (how we reached each node):");
-
-        for (Map.Entry<Vertex<String>, Vertex<String>> entry : forest.entrySet()) {
+        System.out.println("DFS Forest (Parent relationships):");
+        for (Map.Entry<Vertex<String>, Vertex<String>> entry : parentDFS.entrySet()) {
             Vertex<String> child = entry.getKey();
             Vertex<String> parent = entry.getValue();
-
             System.out.println("Vertex " + child.getElement() +
-                    " was discovered from " + parent.getElement());
+                    " discovered from " + parent.getElement());
         }
+
+        // -------------------------------
+        // TEST BFS
+        // -------------------------------
+        System.out.println("\nBFS Traversal starting from A:");
+        Set<Vertex<String>> visitedBFS = new HashSet<>();
+        Map<Vertex<String>, Vertex<String>> parentBFS = new HashMap<>();
+        Map<Vertex<String>, Integer> distance = new HashMap<>();
+
+        GraphAlgorithms.BFS(graph, A, visitedBFS, parentBFS, distance);
+
+        System.out.println("BFS Distances from A:");
+        for (Map.Entry<Vertex<String>, Integer> entry : distance.entrySet()) {
+            System.out.println("Distance from A to " + entry.getKey().getElement() + " = " + entry.getValue());
+        }
+
+        System.out.println("\nBFS Forest (Parent relationships):");
+        for (Map.Entry<Vertex<String>, Vertex<String>> entry : parentBFS.entrySet()) {
+            Vertex<String> child = entry.getKey();
+            Vertex<String> parent = entry.getValue();
+            System.out.println("Vertex " + child.getElement() +
+                    " discovered from " + parent.getElement());
+        }
+
+        // -------------------------------
+        // TEST PATH RECONSTRUCTION
+        // -------------------------------
+        List<Vertex<String>> path = GraphAlgorithms.constructPath(A, D, parentBFS);
+        System.out.print("Path from A to D using BFS: ");
+        if (!path.isEmpty()) {
+            for (Vertex<String> v : path) {
+                System.out.print(v.getElement() + " ");
+            }
+            System.out.println();
+        } else {
+            System.out.println("No path found.");
+        }
+
+        // -------------------------------
+        // TEST CONNECTIVITY
+        // -------------------------------
+        System.out.println("\nIs the graph connected? " + GraphAlgorithms.isConnected(graph));
     }
 }
