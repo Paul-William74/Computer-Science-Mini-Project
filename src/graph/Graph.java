@@ -2,8 +2,15 @@ package graph;
 
 import java.util.List;
 
+/**
+Graph interface specifies the operations a Graph supports but not how it does them
+ */
 public interface Graph<V, E>{
 
+    /*
+    Standard Methods found in a Graph ADT that serve as the backbone for a Graph ADT and are
+    necessary for algorthms like BFS, DFS, Djikstra's and KNN
+    */
     int numVertices();
     int numEdges();
 
@@ -26,5 +33,6 @@ public interface Graph<V, E>{
 
     boolean areaAdjacent(Vertex<V> u, Vertex<V> v);
 
+    //Extra utility method to help with GDD implementation
     List<Vertex<V>> getNeighbors(Vertex<V> v);
 }
