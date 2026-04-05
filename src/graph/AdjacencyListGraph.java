@@ -121,12 +121,15 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * removeVertex removes a vertex from a graph and all the edges connected to it
      * @param v - the vertex we're removing
      */
+    @SuppressWarnings("unchecked")
     @Override
     public void removeVertex(Vertex<V> v) {
+        //Code to make a copy of the adjacency list so we don't modify it while iterating
         List<Edge<E>> edgesCopy = new ArrayList<>(adjMap.get(v));
 
+        // Remove each edge connected to v
         for (Edge<E> e : edgesCopy) {
-            removeEdge(e);
+            removeEdge((Vertex<V>) e.getU(), (Vertex<V>) e.getV());
         }
 
         adjMap.remove(v);
@@ -134,17 +137,41 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
 
     /**
      * removeEdge removes an Edge from a graph
-     * @param e - the edge that we're removing from a graph
+     * @param u - endpoint vertex
+     * @param v - the  other endpoint vertex
      */
     @Override
-    public void removeEdge(Edge<E> e) {
-        Vertex<V> u = (Vertex<V>) e.getU();
-        Vertex<V> v = (Vertex<V>) e.getV();
+    public void removeEdge(Vertex<V> u, Vertex<V> v) {
+        // code to get adjacency lists
+        List<Edge<E>> edgesU = adjMap.get(u);
+        List<Edge<E>> edgesV = adjMap.get(v);
 
-        adjMap.get(u).remove(e);
-        adjMap.get(v).remove(e);
+        if (edgesU == null && edgesV == null) return; // no edge exists
 
-        edgeList.remove(e);
+        Edge<E> edgeToRemove = null;
+
+        // Find the edge in u's list
+        if (edgesU != null) {
+            for (Edge<E> e : edgesU) {
+                if ((e.getU().equals(u) && e.getV().equals(v)) || (e.getU().equals(v) && e.getV().equals(u))) {
+                    edgeToRemove = e;
+                    break;
+                }
+            }
+            if (edgeToRemove != null) {
+                edgesU.remove(edgeToRemove); // remove from u's adjacency list
+            }
+        }
+
+        // Remove the same edge from v's list
+        if (edgesV != null && edgeToRemove != null) {
+            edgesV.remove(edgeToRemove);
+        }
+
+        // code to remove edge from edgeList as well
+        if (edgeList != null && edgeToRemove != null) {
+            edgeList.remove(edgeToRemove);
+        }
     }
 
     /**
@@ -256,6 +283,31 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
         }
 
         return null;
+    }
+
+    /**
+     * getEdgeWeight retrieves the weight of an edge from an edge
+     *
+     * Uses:
+     * 1. Distances between nodes could be stored as Edge weights and this method could
+     * make it easy to retrieve them.
+     * @param u  - one endpoint vertex
+     * @param v - the other endpoint vertex
+     * @return weight - the element of an edge which is the weight and can serve as distance value
+     * between nodes
+     */
+    public E getEdgeWeight(Vertex<V> u, Vertex<V> v) {
+        List<Edge<E>> edges = adjMap.get(u); // adjacency list of u
+        if (edges != null) {
+            for (Edge<E> e : edges) {
+                // Check if edge connects u and v (order doesn't matter for undirected graph however due to how u
+                // and v are defined in Edge class, 2 conditions are necessary)
+                if ((e.getU().equals(u) && e.getV().equals(v)) || (e.getU().equals(v) && e.getV().equals(u))) {
+                    return e.getElement(); // return weight/element
+                }
+            }
+        }
+        return null; // edge not found
     }
 
 }

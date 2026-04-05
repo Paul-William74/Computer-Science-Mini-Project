@@ -131,5 +131,18 @@ public class GraphTest {
 
         System.out.println("Vertices after removal: " + graph.numVertices());
         System.out.println("Edges after removal: " + graph.numEdges());
+
+        // -------------------------------
+        // TEST EDGE WEIGHTS
+        // -------------------------------
+        System.out.println("\nTesting getEdgeWeight:");
+
+        System.out.println("Weight of edge A-B: " + ((AdjacencyListGraph<Node, Integer>) graph).getEdgeWeight(A, B));
+        System.out.println("Weight of edge A-C: " + ((AdjacencyListGraph<Node, Integer>) graph).getEdgeWeight(A, C));
+        System.out.println("Weight of edge B-D: " + ((AdjacencyListGraph<Node, Integer>) graph).getEdgeWeight(B, D));
+        System.out.println("Weight of edge C-D: " + ((AdjacencyListGraph<Node, Integer>) graph).getEdgeWeight(C, D));
+
+        // Test non-existent edge
+        System.out.println("Weight of edge A-D (should be null): " + ((AdjacencyListGraph<Node, Integer>) graph).getEdgeWeight(A, D));
     }
 }
