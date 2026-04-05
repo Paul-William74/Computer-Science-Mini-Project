@@ -27,7 +27,7 @@ public interface Graph<V, E>{
 
     Vertex<V> opposite(Vertex<V> v,Edge<E> e);
 
-    Vertex<V>[] endVertices(Edge<E> e);
+    List<Vertex<V>> endVertices(Edge<E> e);
 
     int degree(Vertex<V> v);
 

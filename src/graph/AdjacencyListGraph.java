@@ -159,8 +159,8 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @return
      */
     @Override
-    public Vertex<V>[] endVertices(Edge<E> e) {
-        return (Vertex<V>[]) new Vertex[]{(Vertex<V>) e.getU(), (Vertex<V>) e.getV()};
+    public List<Vertex<V>> endVertices(Edge<E> e) {
+        return List.of((Vertex<V>) e.getU(), (Vertex<V>) e.getV());
     }
 
     /**

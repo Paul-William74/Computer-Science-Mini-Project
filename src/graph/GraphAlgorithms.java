@@ -14,10 +14,6 @@ public class GraphAlgorithms {
      * This method explores the graph by visiting a vertex, then recursively visiting
      * all of its unvisited neighboring vertices before backtracking.
      *
-     * It also builds a DFS tree (or forest) using the parent map, which records
-     *  how each vertex was discovered during traversal. What is the parent map? and how does
-     *  it record how each vertex was discovered? Is that through Set known? what is Set again?
-     *
      * @param g - the graph being traversed
      * @param u - the starting vertex for the DFS traversal
      * @param visited - a set that keeps track of all visited vertices to avoid revisiting
