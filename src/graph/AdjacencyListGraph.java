@@ -22,6 +22,8 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
     // Stores all edges in the graph for quick access
     private List<Edge<E>> edgeList = new ArrayList<>();
 
+    private Map<V, Vertex<V>> vertexMap = new HashMap<>();
+
 
 
     /**
@@ -68,8 +70,17 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public Vertex<V> insertVertex(V value) {
+
+        //Code to prevent duplicate vertices
+        if (vertexMap.containsKey(value)) {
+            return vertexMap.get(value);
+        }
+
         Vertex<V> v = new Vertex<>(value);
+
         adjMap.put(v, new ArrayList<>());
+        vertexMap.put(value, v);
+
         return v;
     }
 
@@ -83,9 +94,21 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public Edge<E> insertEdge(Vertex<V> u, Vertex<V> v, E value) {
+
+        //Code to check if edge already exists
+        Edge<E> existingEdge = getEdge(u, v);
+
+        if (existingEdge != null) {
+            //Code to update the weight if necessary
+            existingEdge.setElement(value);
+
+            return existingEdge;
+        }
+
+        //Code to create a new edge
         Edge<E> e = new Edge<>(u, v, value);
 
-        //we add an edge to both vertices because the graph is an undirected type of graph
+        //we add an edge to the adjacency list of each vertix
         adjMap.get(u).add(e);
         adjMap.get(v).add(e);
 
@@ -100,9 +123,9 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public void removeVertex(Vertex<V> v) {
-        List<Edge<E>> edges = adjMap.get(v);
+        List<Edge<E>> edgesCopy = new ArrayList<>(adjMap.get(v));
 
-        for (Edge<E> e : edges) {
+        for (Edge<E> e : edgesCopy) {
             removeEdge(e);
         }
 
@@ -216,6 +239,23 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     public boolean hasVertex(Vertex<V> v) {
         return adjMap.containsKey(v);
+    }
+
+    /**
+     * getEdge is a UTILITY method used to retrieve an edge that connects two vertices
+     * if it exists
+     * @param u  - one endpoint vertex
+     * @param v - the other endpoint vertex
+     * @return - the edge object connecting u and v, or null if no such edge exists
+     */
+    public Edge<E> getEdge(Vertex<V> u, Vertex<V> v) {
+        for (Edge<E> e : adjMap.get(u)) {
+            if (opposite(u, e).equals(v)) {
+                return e;
+            }
+        }
+
+        return null;
     }
 
 }
