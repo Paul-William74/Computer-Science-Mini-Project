@@ -24,6 +24,7 @@ public class ImageProcessor {
 
             int[][] binary = convertToBinary(gray, threshold);
             saveBinaryImage(binary, "src/Datasets/output");
+
             return buildGraphFromBinary(binary);
 
         } catch (IOException e) {
@@ -109,9 +110,9 @@ public class ImageProcessor {
         int width= grayScale.length;
         int height=grayScale[0].length;
 
-        for (int x=0;x<width;x++){
-            for(int y=0;y<height;y++){
-                hist[grayScale[x][y]]++;
+        for (int[] ints : grayScale) {
+            for (int y = 0; y < height; y++) {
+                hist[ints[y]]++;
             }
         }
 
