@@ -18,7 +18,10 @@ public final class GDDSimilarity<V,E> {
     // ---------------------------- Helper methods ----------------------------
 
     /**
-     *
+     * Types of Orbits of size 3 graphlets:
+     * type 0: currentNode -> o -> o
+     * type 1: o <- currentNode -> o
+     * type 2: triangular shape where all nodes are connected to each other
      * @param graph - graph whose nodes are to be considered
      * @return - a map of the number of times each orbit of size 3 graphlets has appeared in the graph
      */
@@ -26,14 +29,14 @@ public final class GDDSimilarity<V,E> {
     {
         List<Vertex<V>> vertices = graph.vertices();
         int n = vertices.size();
-        Map<Vertex<V>, int[]> orbitcounts = new HashMap<>();
+        Map<Vertex<V>, int[]> orbitCounts = new HashMap<>();
 
         // Initializing orbit count for each vertex
         for(Vertex<V> vertex : vertices)
         {
-            orbitcounts.put(vertex, new int[3]);
+            orbitCounts.put(vertex, new int[3]);
         }
-
+        // Loop ensures to consider every possible triplet of vertices in the graph
         for (int i = 0; i < n-2;i++)
         {
             for (int j = i + 1; j < n-1; j++)
@@ -51,12 +54,55 @@ public final class GDDSimilarity<V,E> {
                     int edgeBC = graph.areaAdjacent(b,c) ? 1: 0;
                     int totalEdges = edgeAB + edgeAC + edgeBC;
 
-                    // Consider connected triples only
+                    // extract current count of orbits to modify/update
+                    int[] aOrbits = orbitCounts.get(a);
+                    int[] bOrbits = orbitCounts.get(b);
+                    int[] cOrbits = orbitCounts.get(c);
+
+                    // Consider connected triples only (2 or 3 edges)
+                    if (totalEdges == 2)
+                    {
+                        // Figure orbit of each node
+                        if ((edgeAB + edgeBC) == 2)
+                        {
+                            // a - b - c : a and c are endpoints with b in the middle
+                            aOrbits[0]++; // a - o - o type 0
+                            cOrbits[0]++; // c - o - o type 0
+                            bOrbits[1]++; // o - b - o type 1
+                        }
+                        else if ((edgeAC + edgeBC) == 2)
+                        {
+                            // a - c - b : a and b are endpoints with c in the middle
+                            aOrbits[0]++;
+                            bOrbits[0]++;
+                            cOrbits[1]++;
+                        }
+                        else if ((edgeAB + edgeAC) == 2)
+                        {
+                            // b - a - c : b and c are endpoints with a in the middle
+                            bOrbits[0]++;
+                            cOrbits[0]++;
+                            aOrbits[1]++;
+                        }
+
+                    }
+                    else if(totalEdges == 3)
+                    {
+                        aOrbits[2]++;
+                        bOrbits[2]++;
+                        cOrbits[2]++;
+                    }
+                    // Last case totalEdges <=1 -> ignore
+
+                    // Update orbit counts
+                    orbitCounts.put(a, aOrbits);
+                    orbitCounts.put(b, bOrbits);
+                    orbitCounts.put(c, cOrbits);
                 }
             }
         }
 
-        return new HashMap<>(); // Only a placeholder
+        return orbitCounts;
 
     }
 
