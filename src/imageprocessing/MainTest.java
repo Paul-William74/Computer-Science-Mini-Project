@@ -13,7 +13,7 @@ public class MainTest {
         try {
             ImageProcessor processor = new ImageProcessor();
 
-            File file = new File("src/Datasets/tests/images/01_test.tif"); // <-- put your image path here
+            File file = new File("src/Datasets/tests/images/01_test.tif");
 
             System.out.println("Processing image...");
 
