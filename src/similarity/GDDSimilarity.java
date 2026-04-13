@@ -84,26 +84,54 @@ public final class GDDSimilarity<V,E> {
                             cOrbits[0]++;
                             aOrbits[1]++;
                         }
-
                     }
                     else if(totalEdges == 3)
                     {
+                        //
                         aOrbits[2]++;
                         bOrbits[2]++;
                         cOrbits[2]++;
                     }
-                    // Last case totalEdges <=1 -> ignore
-
                     // Update orbit counts
                     orbitCounts.put(a, aOrbits);
                     orbitCounts.put(b, bOrbits);
                     orbitCounts.put(c, cOrbits);
+
+                    // Last case totalEdges <=1 -> ignore
                 }
             }
         }
 
         return orbitCounts;
 
+    }
+
+    private int[] getFeatureVector(Graph<V,E> graph)
+    {
+        Map<Vertex<V>, int[]> orbitCounts = countOrbits(graph);
+        int totalGraphlets = 0;     // Will be used to normalize the feature vector
+        int[] feature = {0,0,0};    // Contains the aggregate amount of each of the 3 orbits considered
+                                    // for each vertex within the graph. Thus getting the graph's "fingerprint"
+
+        for (int[] vertexOrbits : orbitCounts.values())
+        {
+            for (int orbit = 0; orbit < 3; orbit++)
+            {
+                feature[orbit] += vertexOrbits[orbit];
+                totalGraphlets += vertexOrbits[orbit];
+            }
+        }
+        // In case no size 3 graphlets are in the graph - return zero vector
+        if (totalGraphlets == 0)
+            return new int[]{0,0,0};
+
+        // Normalise
+        for (int i = 0; i < 3; i++)
+        {
+            feature[i] = feature[i]/totalGraphlets;
+        }
+
+        return feature;
     }
 
 }
