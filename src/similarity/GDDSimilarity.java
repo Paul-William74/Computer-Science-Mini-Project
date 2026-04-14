@@ -20,8 +20,13 @@ public final class GDDSimilarity<V,E> {
      */
     public double computeSimilarity(Graph<V,E> graph1, Graph<V,E> graph2)
     {
-        int[] feature1 = getFeatureVector(graph1);
-        int[] feature2 = getFeatureVector(graph2);
+        double[] feature1 = getFeatureVector(graph1);
+        double[] feature2 = getFeatureVector(graph2);
+        System.out.printf("""
+                
+                Feature vector of graph 1: {%.2f, %.2f, %.2f}
+                Feature vector of graph 2: {%.2f, %.2f, %.2f}
+                """, feature1[0],feature1[1],feature1[2],feature2[0],feature2[1],feature2[2]);
         return cosineSimilarity(feature1, feature2)*100;
     }
     // ---------------------------- Helper methods ----------------------------
@@ -46,9 +51,9 @@ public final class GDDSimilarity<V,E> {
             orbitCounts.put(vertex, new int[3]);
         }
         // Loop ensures to consider every possible triplet of vertices in the graph
-        for (int i = 0; i < n-2;i++)
+        for (int i = 0; i < n;i++)
         {
-            for (int j = i + 1; j < n-1; j++)
+            for (int j = i + 1; j < n; j++)
             {
                 for (int k = j + 1; k < n; k++)
                 {
@@ -74,21 +79,21 @@ public final class GDDSimilarity<V,E> {
                         // Figure orbit of each node
                         if ((edgeAB + edgeBC) == 2)
                         {
-                            // a - b - c : a and c are endpoints with b in the middle
+                            // a - b - c : a and c are endpoints with "b" in the middle
                             aOrbits[0]++; // a - o - o type 0
                             cOrbits[0]++; // c - o - o type 0
                             bOrbits[1]++; // o - b - o type 1
                         }
                         else if ((edgeAC + edgeBC) == 2)
                         {
-                            // a - c - b : a and b are endpoints with c in the middle
+                            // a - c - b : a and b are endpoints with "c" in the middle
                             aOrbits[0]++;
                             bOrbits[0]++;
                             cOrbits[1]++;
                         }
                         else if ((edgeAB + edgeAC) == 2)
                         {
-                            // b - a - c : b and c are endpoints with a in the middle
+                            // b - a - c : b and c are endpoints with "a" in the middle
                             bOrbits[0]++;
                             cOrbits[0]++;
                             aOrbits[1]++;
@@ -124,11 +129,11 @@ public final class GDDSimilarity<V,E> {
      * @param graph undirected graph
      * @return 3D feature vector
      */
-    private int[] getFeatureVector(Graph<V,E> graph)
+    private double[] getFeatureVector(Graph<V,E> graph)
     {
         Map<Vertex<V>, int[]> orbitCounts = countOrbits(graph);
         int totalGraphlets = 0;     // Will be used to normalize the feature vector
-        int[] feature = {0,0,0};    // Contains the aggregate amount of each of the 3 orbits considered
+        double[] feature = {0,0,0};    // Contains the aggregate amount of each of the 3 orbits considered
                                     // for each vertex within the graph. Thus getting the graph's "fingerprint"
 
         for (int[] vertexOrbits : orbitCounts.values())
@@ -141,7 +146,7 @@ public final class GDDSimilarity<V,E> {
         }
         // In case no size 3 graphlets are in the graph - return zero vector
         if (totalGraphlets == 0)
-            return new int[]{0,0,0};
+            return new double[]{0,0,0};
 
         // Normalise
         for (int i = 0; i < 3; i++)
@@ -159,7 +164,7 @@ public final class GDDSimilarity<V,E> {
      * @param feature2 - feature vector of another graph
      * @return value between 0.0 - 1.0 representing cosine similarity
      */
-    private double cosineSimilarity(int[] feature1, int[] feature2)
+    private double cosineSimilarity(double[] feature1, double[] feature2)
     {
         // Back to linear Algebra – cosine similarity between 2 vectors is computed as follows
         // = (v1 dotted with v2)/(||v1|| * ||v2||)
