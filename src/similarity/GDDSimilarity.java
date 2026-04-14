@@ -7,21 +7,30 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * So this class is basically a helper class with methods to be used to compute GDD similarity between 2 graphs
+ * Computes graphlet degree distribution (GDD) similarity between two graphs.
+ * Uses graphlets of size 3 (paths of length 2 and triangles)
  */
 public final class GDDSimilarity<V,E> {
+    /**
+     * Returns a similarity score between 0-100%
+     * for two graphs based on their normalized orbit distributions.
+     * @param graph1 first graph (undirected)
+     * @param graph2 second graph (undirected)
+     * @return cosine similarity between the two graphs' feature vectors
+     */
     public double computeSimilarity(Graph<V,E> graph1, Graph<V,E> graph2)
     {
-
-        return 0.00; // Placeholder
+        int[] feature1 = getFeatureVector(graph1);
+        int[] feature2 = getFeatureVector(graph2);
+        return cosineSimilarity(feature1, feature2)*100;
     }
     // ---------------------------- Helper methods ----------------------------
 
     /**
      * Types of Orbits of size 3 graphlets:
-     * type 0: currentNode -> o -> o
-     * type 1: o <- currentNode -> o
-     * type 2: triangular shape where all nodes are connected to each other
+     * orbit 0: currentNode -> o -> o
+     * orbit 1: o <- currentNode -> o
+     * orbit 2: node is part of a triangle
      * @param graph - graph whose nodes are to be considered
      * @return - a map of the number of times each orbit of size 3 graphlets has appeared in the graph
      */
@@ -106,6 +115,15 @@ public final class GDDSimilarity<V,E> {
 
     }
 
+    /**
+     * For a given graph, counts how many times each node appears in each orbit,
+     * orbit 0: currentNode -> o -> o
+     * orbit 1: o <- currentNode -> o
+     * orbit 2: node is part of a triangle
+     * Then normalizes the aggregated orbit sums to form a 3‑dimensional feature vector.
+     * @param graph undirected graph
+     * @return 3D feature vector
+     */
     private int[] getFeatureVector(Graph<V,E> graph)
     {
         Map<Vertex<V>, int[]> orbitCounts = countOrbits(graph);
@@ -133,5 +151,34 @@ public final class GDDSimilarity<V,E> {
 
         return feature;
     }
+
+    /**
+     * Computes the cosine similarity between two vectors of the same length.
+     * Vectors should be non‑negative (orbit frequencies).
+     * @param feature1 - feature vector of a graph
+     * @param feature2 - feature vector of another graph
+     * @return value between 0.0 - 1.0 representing cosine similarity
+     */
+    private double cosineSimilarity(int[] feature1, int[] feature2)
+    {
+        // Back to linear Algebra – cosine similarity between 2 vectors is computed as follows
+        // = (v1 dotted with v2)/(||v1|| * ||v2||)
+        // it checks if vectors are pointing in the same direction (thus similar) or not
+        // if result 1 - vectors point in the same direction, 0 - vectors are perpendicular,
+        // -1 - vectors point in opposite directions thus opposite to each other
+        double dotProduct = 0;
+        double v1Dot = 0;
+        double v2Dot = 0;
+        for (int i = 0; i < feature1.length; i++)
+        {
+            dotProduct += (feature1[i] * feature2[i]);
+            v1Dot += (feature1[i] * feature1[i]);
+            v2Dot += (feature2[i] * feature2[i]);
+        }
+        if (v1Dot == 0 || v2Dot == 0) return 0.0;
+        // I am not sure if we are to use this Math library
+        return dotProduct/(Math.sqrt(v1Dot)*Math.sqrt(v2Dot));
+    }
+
 
 }
