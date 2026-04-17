@@ -290,7 +290,7 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      *
      * Uses:
      * 1. Distances between nodes could be stored as Edge weights and this method could
-     * make it easy to retrieve them.
+     * make it easy to retrieve them and use in KNN implementation.
      * @param u  - one endpoint vertex
      * @param v - the other endpoint vertex
      * @return weight - the element of an edge which is the weight and can serve as distance value
