@@ -1,5 +1,7 @@
 package graph;
 
+import similarity.GDDSimilarity;
+
 import java.util.*;
 
 public class GraphTest {
@@ -144,5 +146,39 @@ public class GraphTest {
 
         // Test non-existent edge
         System.out.println("Weight of edge A-D (should be null): " + ((AdjacencyListGraph<Node, Integer>) graph).getEdgeWeight(A, D));
+
+        // -------------------------------
+        // TEST GDD SIMILARITY
+        // -------------------------------
+        System.out.println("\n--- Testing GDD Similarity ---");
+
+        AdjacencyListGraph<Node, Integer> triangleGraph = new AdjacencyListGraph<>();
+        Vertex<Node> T1 = triangleGraph.insertVertex(new Node(10, 0, 0, 1));
+        Vertex<Node> T2 = triangleGraph.insertVertex(new Node(11, 1, 0, 1));
+        Vertex<Node> T3 = triangleGraph.insertVertex(new Node(12, 0, 1, 1));
+        triangleGraph.insertEdge(T1, T2, 1);
+        triangleGraph.insertEdge(T2, T3, 1);
+        triangleGraph.insertEdge(T3, T1, 1);
+
+        // Compute similarity of the with itself – this should be 1.0
+        GDDSimilarity<Node, Integer> gdd = new GDDSimilarity<>();
+        double selfSimilarity = gdd.computeSimilarity(triangleGraph, triangleGraph);
+        System.out.println("Similarity of graph with itself: " + selfSimilarity + "%");
+
+        AdjacencyListGraph<Node, Integer> houseShapeGraph = new AdjacencyListGraph<>();
+        Vertex<Node> H1 = houseShapeGraph.insertVertex(new Node(13, 0, 0, 1));
+        Vertex<Node> H2 = houseShapeGraph.insertVertex(new Node(14, 1, 0, 1));
+        Vertex<Node> H3 = houseShapeGraph.insertVertex(new Node(15, 1, 1, 1));
+        Vertex<Node> H4 = houseShapeGraph.insertVertex(new Node(16, 0, 1, 1));
+        Vertex<Node> H5 = houseShapeGraph.insertVertex(new Node(17, 1, 2, 1));
+        houseShapeGraph.insertEdge(H1, H2, 2);
+        houseShapeGraph.insertEdge(H2, H3, 2);
+        houseShapeGraph.insertEdge(H3, H4, 2);
+        houseShapeGraph.insertEdge(H4, H1, 2);
+        houseShapeGraph.insertEdge(H4, H5, 2);
+        houseShapeGraph.insertEdge(H5, H3, 1);
+
+        double crossSimilarity = gdd.computeSimilarity(houseShapeGraph, triangleGraph);
+        System.out.printf("Similarity of graph with another: %.2f%%", crossSimilarity);
     }
 }
