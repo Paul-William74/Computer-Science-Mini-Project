@@ -59,7 +59,7 @@ public class ImageProcessor {
                     String key = x + "," + y;
 
                     if (!pixelMap.containsKey(key)) {
-                        Node data = new Node(id++, x, y, 1);
+                        Node data = new Node(id++, x, y);
                         Vertex<Node> v = graph.insertVertex(data);
                         pixelMap.put(key, v);
                     }
