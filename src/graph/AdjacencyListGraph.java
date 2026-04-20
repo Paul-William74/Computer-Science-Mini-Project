@@ -19,6 +19,8 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
     // Maps each vertex to its list of directly connected edges
     private Map<Vertex<V>, List<Edge<E>>> adjMap = new HashMap<>();
 
+    private Map<Vertex<V>, Set<Vertex<V>>> adjacencySet = new HashMap<>();
+
     // Stores all edges in the graph for quick access
     private List<Edge<E>> edgeList = new ArrayList<>();
 
@@ -79,6 +81,7 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
         Vertex<V> v = new Vertex<>(value);
 
         adjMap.put(v, new ArrayList<>());
+        adjacencySet.put(v, new HashSet<>());
         vertexMap.put(value, v);
 
         return v;
@@ -112,6 +115,9 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
         adjMap.get(u).add(e);
         adjMap.get(v).add(e);
 
+        adjacencySet.get(u).add(v);
+        adjacencySet.get(v).add(u);
+
         edgeList.add(e);
 
         return e;
@@ -133,6 +139,10 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
         }
 
         adjMap.remove(v);
+        adjacencySet.remove(v);
+
+        //vertexMap.values().remove(v);
+        vertexMap.values().removeIf(vertex -> vertex.equals(v));
     }
 
     /**
@@ -172,6 +182,9 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
         if (edgeList != null && edgeToRemove != null) {
             edgeList.remove(edgeToRemove);
         }
+
+        adjacencySet.get(u).remove(v);
+        adjacencySet.get(v).remove(u);
     }
 
     /**
@@ -220,7 +233,8 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public int degree(Vertex<V> v) {
-        return adjMap.get(v).size();
+        return adjacencySet.get(v).size();
+        //adjMap.get(v).size();
     }
 
     /**
@@ -231,12 +245,16 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public boolean areaAdjacent(Vertex<V> u, Vertex<V> v) {
+        /*
         for (Edge<E> e : adjMap.get(u)) {
             if (opposite(u, e).equals(v)) {
                 return true;
             }
         }
         return false;
+        */
+        Set<Vertex<V>> neighbors = adjacencySet.get(u);
+        return neighbors != null && neighbors.contains(v);
     }
 
     /**
@@ -250,12 +268,17 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public List<Vertex<V>> getNeighbors(Vertex<V> v) {
+        /*
         List<Vertex<V>> neighbors = new ArrayList<>();
 
         for (Edge<E> e : adjMap.get(v)) {
             neighbors.add(opposite(v, e));
         }
         return neighbors;
+
+         */
+        //return new ArrayList<>(adjacencySet.get(v));
+        return new ArrayList<>(adjacencySet.getOrDefault(v, Collections.emptySet()));
     }
 
 
