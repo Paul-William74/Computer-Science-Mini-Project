@@ -9,61 +9,38 @@ import java.io.File;
 public class MainTest {
 
     public static void main(String[] args) {
-
         try {
             ImageProcessor processor = new ImageProcessor();
-
             File file = new File("src/Datasets/tests/images/01_test.tif");
 
-            System.out.println("Processing image...");
+            System.out.println("Building vessel‑segment graph...");
+            AdjacencyListGraph<Node, Double> graph = processor.buildSegmentGraph(file);
 
-            // Build graph (this runs full pipeline)
-            AdjacencyListGraph<Node, Integer> graph = processor.buildGraph(file);
+            System.out.println("\n=== Graph Statistics ===");
+            System.out.println("Vertices (segments): " + graph.numVertices());
+            System.out.println("Edges (between segments): " + graph.numEdges());
 
-            // =========================
-            // GRAPH TESTING
-            // =========================
-            System.out.println("\n--- GRAPH STATS ---");
-            System.out.println("Vertices: " + graph.numVertices());
-            System.out.println("Edges: " + graph.numEdges());
-
-            // =========================
-            // FEATURE DETECTION
-            // =========================
-            int endpoints = 0;
-            int bifurcations = 0;
-
-            for (Vertex<Node> v : graph.vertices()) {
-
-                int degree = graph.degree(v);
-
-                if (degree == 1) {
-                    endpoints++;
-                }
-
-                if (degree >= 3) {
-                    bifurcations++;
-                }
-            }
-
-            System.out.println("\n--- FEATURES ---");
-            System.out.println("Endpoints: " + endpoints);
-            System.out.println("Bifurcations: " + bifurcations);
-
-            // =========================
-            // SANITY CHECK SAMPLE NODE
-            // =========================
-            System.out.println("\n--- SAMPLE NODES ---");
-
+            // Print features of first 5 segments
+            System.out.println("\n=== Sample Segment Features ===");
             int count = 0;
             for (Vertex<Node> v : graph.vertices()) {
-                System.out.println(v.getElement());
-
-                count++;
-                if (count == 5) break; // print only first 5
+                Node segNode = v.getElement();
+                System.out.printf("Segment %d: area=%.1f, circ=%.3f, aspect=%.2f, texture=%.2f%n",
+                        segNode.getId(), segNode.getArea(), segNode.getCircularity(),
+                        segNode.getAspectRatio(), segNode.getTexture());
+                if (++count >= 5) break;
             }
 
-            System.out.println("\nProcessing complete.");
+            // Count bifurcations and endpoints in the segment graph
+            int endpoints = 0, bifurcations = 0;
+            for (Vertex<Node> v : graph.vertices()) {
+                int deg = graph.degree(v);
+                if (deg == 1) endpoints++;
+                else if (deg >= 3) bifurcations++;
+            }
+            System.out.println("\n=== Network Topology ===");
+            System.out.println("Endpoint segments: " + endpoints);
+            System.out.println("Bifurcation points (junctions between segments): " + bifurcations);
 
         } catch (Exception e) {
             e.printStackTrace();
