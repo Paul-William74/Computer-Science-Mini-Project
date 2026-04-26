@@ -17,8 +17,7 @@ public class Junction {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (!(obj instanceof Junction)) return false;
-        Junction other = (Junction) obj;
+        if (!(obj instanceof Junction other)) return false;
         return x == other.x && y == other.y;
     }
 
