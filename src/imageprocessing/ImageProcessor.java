@@ -11,524 +11,511 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Processes retinal fundus images and builds a vessel-segment graph.
- *
- * <p>Pipeline:</p>
- * <ol>
- *     <li>Green channel enhancement</li>
- *     <li>Gaussian smoothing</li>
- *     <li>Masked Otsu thresholding</li>
- *     <li>Noise removal</li>
- *     <li>Skeletonization</li>
- *     <li>Segment extraction</li>
- *     <li>Graph construction</li>
- * </ol>
+ * REFINED FINAL VERSION
+ *<p>
+ * Real retinal vessel graph only:
+ * - vertices = endpoints / bifurcations
+ * - edges = traced vessel branches
+ *<p>
+ * Improvements:
+ * - stronger node merging
+ * - suppress fake micro nodes
+ * - cleaner branch detection
+ * - reduced vertex explosion
  */
 public class ImageProcessor {
 
-    /**
-     * Builds the vessel segment graph from an image file.
-     *
-     * @param imageFile retinal image file
-     * @return graph of vessel segments
-     * @throws IOException if image loading fails
-     */
-    public AdjacencyListGraph<Node, Double> buildSegmentGraph(File imageFile)
+    /* =======================================================
+       PUBLIC ENTRY
+       ======================================================= */
+
+    public AdjacencyListGraph<Node, Double> buildNodeGraph(File imageFile)
             throws IOException {
 
         BufferedImage image = ImageIO.read(imageFile);
 
-        // Convert to grayscale using inverted green channel (vessels appear bright)
         int[][] gray = convertToGrayScale(image);
 
-        // Smooth to reduce noise
-        int[][] smooth = smoothImage(gray);
+        int[][] smooth = smooth(gray);
 
-        // Create FOV mask (exclude dark background)
-        boolean[][] mask = createFOVMask(gray);
+        boolean[][] mask = createCircularMask(gray);
 
-        // Masked Otsu thresholding
-        int threshold = calculateThresholdMasked(smooth, mask);
+        int threshold = computeThreshold(smooth, mask);
 
-        // Clamp threshold to reasonable range for retinal images
-        threshold = Math.clamp(threshold, 15, 65);
+        System.out.println("Threshold = " + threshold);
 
-        System.out.println("Otsu threshold: " + threshold);
+        int[][] binary = toBinary(smooth, threshold, mask);
 
-        // Binarize using threshold and mask
-        int[][] binary = convertToBinary(smooth, threshold, mask);
-
-        // Remove isolated noise pixels
         binary = removeNoise(binary);
 
-        saveBinaryImage(binary, "src/Datasets/output/binary.png");
+        saveBinary(binary, "src/Datasets/output/binary.png");
 
-        // Skeletonize to 1-pixel wide lines
         int[][] skeleton = skeletonize(binary);
 
-        saveBinaryImage(skeleton, "src/Datasets/output/skeleton.png");
+        saveBinary(skeleton, "src/Datasets/output/skeleton.png");
 
-        // Find all junctions (bifurcations and endpoints)
-        Map<String, Junction> junctions = findJunctions(skeleton);
+        Map<String, Junction> raw = detectJunctions(skeleton);
 
-        System.out.println("Found " + junctions.size() + " junctions");
+        System.out.println("Detected raw nodes = " + raw.size());
 
-        // Extract vessel segments between junctions
-        List<Segment> segments = extractSegments(skeleton, junctions);
+        List<Node> nodes = clusterJunctions(raw, skeleton);
 
-        System.out.println("Extracted " + segments.size() + " segments");
+        System.out.println("Merged nodes = " + nodes.size());
 
-        // Compute features for each segment
-        for (Segment s : segments) {
-            computeSegmentFeatures(s, gray, binary);
+        AdjacencyListGraph<Node, Double> graph =
+                new AdjacencyListGraph<>();
+
+        Map<Node, Vertex<Node>> map = new HashMap<>();
+
+        for (Node n : nodes) {
+            Vertex<Node> v = graph.insertVertex(n);
+            map.put(n, v);
         }
 
-        // Build graph: each segment = one vertex
-        AdjacencyListGraph<Node, Double> graph = new AdjacencyListGraph<>();
-        Map<Segment, Vertex<Node>> segmentToVertex = new HashMap<>();
+        traceEdges(graph, map, nodes, skeleton);
 
-        for (Segment s : segments) {
-            Node node = new Node(s.id, 0, 0);
-            node.setArea(s.area);
-            node.setCircularity(s.circularity);
-            node.setAspectRatio(s.aspectRatio);
-            node.setTexture(s.textureContrast);
+        removeIsolated(graph);
 
-            Vertex<Node> v = graph.insertVertex(node);
-            segmentToVertex.put(s, v);
-        }
-
-        // Connect segments that share a junction
-        connectSegments(graph, segmentToVertex, segments);
-
-        // Visualisation
-        saveSegmentColourImage(skeleton, segments, "src/Datasets/output/segments_coloured.png");
-
-        System.out.println("Graph built: " + graph.numVertices() + " vertices, " +
-                graph.numEdges() + " edges");
+        System.out.println("Graph built.");
 
         return graph;
     }
 
-    /* ==========================================================
+    /* =======================================================
        IMAGE PREPROCESSING
-       ========================================================== */
+       ======================================================= */
 
-    /**
-     * Converts image to grayscale using inverted green channel.
-     * Inverted because vessels are dark in original, we want them bright.
-     *
-     * @param image source image
-     * @return grayscale matrix (0-255, vessels bright)
-     */
     private int[][] convertToGrayScale(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        int[][] gray = new int[width][height];
 
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                int rgb = image.getRGB(x, y);
-                int g = (rgb >> 8) & 255;
-                gray[x][y] = 255 - g; // Invert: dark vessels become bright
-            }
-        }
-        return gray;
-    }
+        int w = image.getWidth();
+        int h = image.getHeight();
 
-    /**
-     * Applies 3x3 Gaussian smoothing.
-     *
-     * @param img input image
-     * @return smoothed image
-     */
-    private int[][] smoothImage(int[][] img) {
-        int w = img.length;
-        int h = img[0].length;
         int[][] out = new int[w][h];
-
-        int[][] kernel = {{1, 2, 1}, {2, 4, 2}, {1, 2, 1}};
-
-        for (int x = 1; x < w - 1; x++) {
-            for (int y = 1; y < h - 1; y++) {
-                int sum = 0;
-                int weight = 0;
-                for (int i = -1; i <= 1; i++) {
-                    for (int j = -1; j <= 1; j++) {
-                        sum += img[x + i][y + j] * kernel[i + 1][j + 1];
-                        weight += kernel[i + 1][j + 1];
-                    }
-                }
-                out[x][y] = sum / weight;
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Creates circular field-of-view mask based on intensity threshold.
-     *
-     * @param gray grayscale image
-     * @return mask of valid retina pixels
-     */
-    private boolean[][] createFOVMask(int[][] gray) {
-        int w = gray.length;
-        int h = gray[0].length;
-        boolean[][] mask = new boolean[w][h];
 
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
-                // Background is black (<5), retina is brighter
-                if (gray[x][y] > 8) {
-                    mask[x][y] = true;
-                }
+
+                int rgb = image.getRGB(x, y);
+                int g = (rgb >> 8) & 255;
+
+                out[x][y] = 255 - g; // vessels bright
             }
         }
+
+        return out;
+    }
+
+    private int[][] smooth(int[][] img) {
+
+        int w = img.length;
+        int h = img[0].length;
+
+        int[][] out = new int[w][h];
+
+        for (int x = 1; x < w - 1; x++) {
+            for (int y = 1; y < h - 1; y++) {
+
+                int sum = 0;
+
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        sum += img[x + dx][y + dy];
+
+                out[x][y] = sum / 9;
+            }
+        }
+
+        return out;
+    }
+
+    private boolean[][] createCircularMask(int[][] img) {
+
+        int w = img.length;
+        int h = img[0].length;
+
+        boolean[][] mask = new boolean[w][h];
+
+        int cx = w / 2;
+        int cy = h / 2;
+
+        int radius = Math.min(w, h) / 2 - 20;
+
+        for (int x = 0; x < w; x++) {
+            for (int y = 0; y < h; y++) {
+
+                int dx = x - cx;
+                int dy = y - cy;
+
+                if (dx * dx + dy * dy < radius * radius)
+                    mask[x][y] = true;
+            }
+        }
+
         return mask;
     }
 
-    /**
-     * Otsu threshold using only pixels inside retina mask.
-     *
-     * @param gray grayscale image
-     * @param mask field mask
-     * @return threshold
-     */
-    private int calculateThresholdMasked(int[][] gray, boolean[][] mask) {
-        int[] hist = new int[256];
-        int total = 0;
-        int w = gray.length;
-        int h = gray[0].length;
+    private int computeThreshold(int[][] img, boolean[][] mask) {
 
-        for (int x = 0; x < w; x++) {
-            for (int y = 0; y < h; y++) {
+        long sum = 0;
+        long count = 0;
+
+        for (int x = 0; x < img.length; x++) {
+            for (int y = 0; y < img[0].length; y++) {
+
                 if (mask[x][y]) {
-                    hist[gray[x][y]]++;
-                    total++;
+                    sum += img[x][y];
+                    count++;
                 }
             }
         }
 
-        if (total == 0) return 35; // fallback
-
-        double sum = 0;
-        for (int i = 0; i < 256; i++) {
-            sum += i * hist[i];
-        }
-
-        double sumB = 0;
-        int wB = 0;
-        double maxVar = -1;
-        int threshold = 35;
-
-        for (int t = 0; t < 256; t++) {
-            wB += hist[t];
-            if (wB == 0) continue;
-
-            int wF = total - wB;
-            if (wF == 0) break;
-
-            sumB += (double) t * hist[t];
-            double mB = sumB / wB;
-            double mF = (sum - sumB) / wF;
-            double var = (double) wB * wF * (mB - mF) * (mB - mF);
-
-            if (var > maxVar) {
-                maxVar = var;
-                threshold = t;
-            }
-        }
-
-        return Math.max(15, Math.min(80, threshold));
+        return (int) (sum / count) + 18;
     }
 
-    /**
-     * Converts grayscale to binary image.
-     *
-     * @param gray grayscale image
-     * @param threshold threshold value
-     * @param mask retina mask
-     * @return binary image
-     */
-    private int[][] convertToBinary(int[][] gray, int threshold, boolean[][] mask) {
-        int w = gray.length;
-        int h = gray[0].length;
+    private int[][] toBinary(int[][] img,
+                             int threshold,
+                             boolean[][] mask) {
+
+        int w = img.length;
+        int h = img[0].length;
+
         int[][] out = new int[w][h];
 
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
-                if (mask[x][y] && gray[x][y] > threshold) {
+
+                if (mask[x][y] && img[x][y] > threshold)
                     out[x][y] = 1;
-                }
             }
         }
+
         return out;
     }
 
-    /**
-     * Removes isolated noise using neighbour counting.
-     *
-     * @param img binary image
-     * @return cleaned binary image
-     */
     private int[][] removeNoise(int[][] img) {
+
         int w = img.length;
         int h = img[0].length;
+
         int[][] out = new int[w][h];
 
         for (int x = 1; x < w - 1; x++) {
             for (int y = 1; y < h - 1; y++) {
+
                 int count = 0;
-                for (int dx = -1; dx <= 1; dx++) {
-                    for (int dy = -1; dy <= 1; dy++) {
-                        if (img[x + dx][y + dy] == 1) count++;
-                    }
-                }
-                if (count >= 3) {
+
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        count += img[x + dx][y + dy];
+
+                if (count >= 5)
                     out[x][y] = 1;
-                }
             }
         }
+
         return out;
     }
 
-    /**
-     * Skeletonizes binary vessel image.
-     *
-     * @param binary binary image
-     * @return skeleton image
-     */
     private int[][] skeletonize(int[][] binary) {
         return new Skeletonization(binary).getSkeleton();
     }
 
-    /* ==========================================================
-       GRAPH EXTRACTION
-       ========================================================== */
+    /* =======================================================
+       NODE DETECTION
+       ======================================================= */
 
-    private Map<String, Junction> findJunctions(int[][] skel) {
+    private Map<String, Junction> detectJunctions(int[][] skel) {
+
         Map<String, Junction> map = new HashMap<>();
-        int w = skel.length;
-        int h = skel[0].length;
 
-        for (int x = 1; x < w - 1; x++) {
-            for (int y = 1; y < h - 1; y++) {
-                if (skel[x][y] != 1) continue;
+        for (int x = 1; x < skel.length - 1; x++) {
+            for (int y = 1; y < skel[0].length - 1; y++) {
 
-                int[] n = {
-                        skel[x][y - 1], skel[x + 1][y - 1], skel[x + 1][y],
-                        skel[x + 1][y + 1], skel[x][y + 1], skel[x - 1][y + 1],
-                        skel[x - 1][y], skel[x - 1][y - 1]
-                };
+                if (skel[x][y] != 1)
+                    continue;
 
-                int transitions = 0;
-                int neighbors = 0;
+                int n = neighbourCount(skel, x, y);
 
-                for (int i = 0; i < 8; i++) {
-                    if (n[i] == 1) neighbors++;
-                    if (n[i] == 0 && n[(i + 1) % 8] == 1) transitions++;
-                }
-
-                // Endpoint (degree 1)
-                if (transitions == 1 && neighbors == 1) {
-                    map.put(x + "," + y, new Junction(x, y, 1));
-                }
-                // Bifurcation (degree 3)
-                else if (transitions == 3 && neighbors == 3) {
-                    map.put(x + "," + y, new Junction(x, y, 3));
-                }
-                // Higher order (>=4 bifurcation)
-                else if (transitions >= 4 && neighbors >= 4) {
-                    map.put(x + "," + y, new Junction(x, y, neighbors));
+                if (n == 1 || n >= 3) {
+                    map.put(x + "," + y,
+                            new Junction(x, y, n));
                 }
             }
         }
+
         return map;
     }
 
-    private List<Segment> extractSegments(int[][] skel, Map<String, Junction> junctions) {
-        boolean[][] visited = new boolean[skel.length][skel[0].length];
-        List<Segment> list = new ArrayList<>();
+    private int neighbourCount(int[][] img, int x, int y) {
 
-        for (Junction j : junctions.values()) {
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    if (dx == 0 && dy == 0) continue;
-                    int nx = j.x + dx;
-                    int ny = j.y + dy;
+        int c = 0;
 
-                    if (inside(skel, nx, ny) && skel[nx][ny] == 1 && !visited[nx][ny]) {
-                        Segment s = traceSegment(skel, nx, ny, j, junctions, visited);
-                        if (!s.pixels.isEmpty()) {
-                            list.add(s);
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+                if (!(dx == 0 && dy == 0))
+                    c += img[x + dx][y + dy];
+
+        return c;
+    }
+
+    /* =======================================================
+       STRONG NODE MERGING
+       ======================================================= */
+
+    private List<Node> clusterJunctions(Map<String, Junction> raw,
+                                        int[][] skel) {
+
+        boolean[][] visited =
+                new boolean[skel.length][skel[0].length];
+
+        List<Node> nodes = new ArrayList<>();
+
+        for (Junction j : raw.values()) {
+
+            if (visited[j.x][j.y])
+                continue;
+
+            Queue<int[]> q = new LinkedList<>();
+            List<int[]> cluster = new ArrayList<>();
+
+            q.add(new int[]{j.x, j.y});
+            visited[j.x][j.y] = true;
+
+            while (!q.isEmpty()) {
+
+                int[] p = q.poll();
+                cluster.add(p);
+
+                for (int dx = -4; dx <= 4; dx++) {
+                    for (int dy = -4; dy <= 4; dy++) {
+
+                        int nx = p[0] + dx;
+                        int ny = p[1] + dy;
+
+                        if (inside(skel, nx, ny))
+                            continue;
+
+                        if (visited[nx][ny])
+                            continue;
+
+                        if (raw.containsKey(nx + "," + ny)) {
+                            visited[nx][ny] = true;
+                            q.add(new int[]{nx, ny});
                         }
                     }
                 }
             }
-        }
-        return list;
-    }
 
-    private Segment traceSegment(int[][] skel, int x, int y, Junction start,
-                                 Map<String, Junction> junctions, boolean[][] visited) {
-        Segment seg = new Segment();
-        seg.junctionA = start;
+            if (cluster.size() < 2)
+                continue;
 
-        int cx = x, cy = y;
+            int sx = 0;
+            int sy = 0;
 
-        while (true) {
-            visited[cx][cy] = true;
-            seg.addPixel(cx, cy);
-
-            String key = cx + "," + cy;
-            if (junctions.containsKey(key)) {
-                seg.junctionB = junctions.get(key);
-                break;
+            for (int[] p : cluster) {
+                sx += p[0];
+                sy += p[1];
             }
 
-            int[] next = nextPixel(skel, cx, cy, visited);
-            if (next == null) break;
+            int cx = sx / cluster.size();
+            int cy = sy / cluster.size();
+
+            Node n = new Node(cx, cy);
+
+            n.setArea(cluster.size());
+            n.setCircularity(1);
+            n.setAspectRatio(1);
+            n.setTexture(1);
+
+            nodes.add(n);
+        }
+
+        return nodes;
+    }
+
+    /* =======================================================
+       EDGE TRACING
+       ======================================================= */
+
+    private void traceEdges(
+            AdjacencyListGraph<Node, Double> graph,
+            Map<Node, Vertex<Node>> map,
+            List<Node> nodes,
+            int[][] skel) {
+
+        for (Node start : nodes) {
+
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+
+                    if (dx == 0 && dy == 0)
+                        continue;
+
+                    int nx = start.getX() + dx;
+                    int ny = start.getY() + dy;
+
+                    if (inside(skel, nx, ny))
+                        continue;
+
+                    if (skel[nx][ny] != 1)
+                        continue;
+
+                    follow(graph, map, nodes,
+                            start, nx, ny, skel);
+                }
+            }
+        }
+    }
+
+    private void follow(
+            AdjacencyListGraph<Node, Double> graph,
+            Map<Node, Vertex<Node>> map,
+            List<Node> nodes,
+            Node start,
+            int x,
+            int y,
+            int[][] skel) {
+
+        int px = start.getX();
+        int py = start.getY();
+
+        int cx = x;
+        int cy = y;
+
+        int length = 1;
+
+        while (true) {
+
+            Node found = findNode(nodes, cx, cy, start);
+
+            if (found != null) {
+
+                Vertex<Node> u = map.get(start);
+                Vertex<Node> v = map.get(found);
+
+                if (!graph.areaAdjacent(u, v)) {
+                    graph.insertEdge(u, v, (double) length);
+                }
+
+                return;
+            }
+
+            int[] next = nextPixel(skel, px, py, cx, cy);
+
+            if (next == null)
+                return;
+
+            px = cx;
+            py = cy;
 
             cx = next[0];
             cy = next[1];
+
+            length++;
+
+            if (length > 1500)
+                return;
         }
-        return seg;
     }
 
-    private int[] nextPixel(int[][] skel, int x, int y, boolean[][] visited) {
+    private int[] nextPixel(
+            int[][] skel,
+            int px, int py,
+            int cx, int cy) {
+
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
-                if (dx == 0 && dy == 0) continue;
-                int nx = x + dx, ny = y + dy;
-                if (inside(skel, nx, ny) && skel[nx][ny] == 1 && !visited[nx][ny]) {
+
+                if (dx == 0 && dy == 0)
+                    continue;
+
+                int nx = cx + dx;
+                int ny = cy + dy;
+
+                if (inside(skel, nx, ny))
+                    continue;
+
+                if (nx == px && ny == py)
+                    continue;
+
+                if (skel[nx][ny] == 1)
                     return new int[]{nx, ny};
-                }
             }
         }
+
         return null;
     }
 
+    private Node findNode(List<Node> nodes,
+                          int x, int y,
+                          Node ignore) {
+
+        for (Node n : nodes) {
+
+            if (n == ignore)
+                continue;
+
+            if (Math.abs(n.getX() - x) <= 2 &&
+                    Math.abs(n.getY() - y) <= 2)
+                return n;
+        }
+
+        return null;
+    }
+
+    /* =======================================================
+       CLEANUP
+       ======================================================= */
+
+    private void removeIsolated(
+            AdjacencyListGraph<Node, Double> graph) {
+
+        List<Vertex<Node>> remove = new ArrayList<>();
+
+        for (Vertex<Node> v : graph.vertices()) {
+            if (graph.degree(v) == 0)
+                remove.add(v);
+        }
+
+        for (Vertex<Node> v : remove)
+            graph.removeVertex(v);
+    }
+
+    /* =======================================================
+       HELPERS
+       ======================================================= */
+
     private boolean inside(int[][] img, int x, int y) {
-        return x >= 0 && y >= 0 && x < img.length && y < img[0].length;
+
+        return x < 0 ||
+                y < 0 ||
+                x >= img.length ||
+                y >= img[0].length;
     }
 
-    private void connectSegments(AdjacencyListGraph<Node, Double> graph,
-                                 Map<Segment, Vertex<Node>> map, List<Segment> segments) {
-        for (int i = 0; i < segments.size(); i++) {
-            for (int j = i + 1; j < segments.size(); j++) {
-                if (shareJunction(segments.get(i), segments.get(j))) {
-                    Vertex<Node> u = map.get(segments.get(i));
-                    Vertex<Node> v = map.get(segments.get(j));
-                    if (!graph.areaAdjacent(u, v)) {
-                        graph.insertEdge(u, v, 1.0);
-                    }
-                }
-            }
-        }
-    }
+    private void saveBinary(int[][] img, String path) {
 
-    private boolean shareJunction(Segment a, Segment b) {
-        return a.junctionA == b.junctionA || a.junctionA == b.junctionB ||
-                a.junctionB == b.junctionA || a.junctionB == b.junctionB;
-    }
-
-    /* ==========================================================
-       FEATURES (Improved from placeholder)
-       ========================================================== */
-
-    private void computeSegmentFeatures(Segment seg, int[][] gray, int[][] binary) {
-        // Area = number of skeleton pixels in segment (approximation)
-        seg.area = seg.pixels.size();
-
-        // Length = number of skeleton pixels
-        double length = seg.pixels.size();
-
-        // Compute average width from binary mask
-        double totalWidth = 0;
-        int widthSamples = 0;
-
-        for (int i = 0; i < seg.pixels.size(); i += Math.max(1, seg.pixels.size() / 10)) {
-            int[] p = seg.pixels.get(i);
-            int radius = 1;
-            while (radius < 15) {
-                boolean atEdge = false;
-                // Check horizontal
-                if (p[0] + radius < binary.length && binary[p[0] + radius][p[1]] == 0) atEdge = true;
-                if (p[0] - radius >= 0 && binary[p[0] - radius][p[1]] == 0) atEdge = true;
-                // Check vertical
-                if (p[1] + radius < binary[0].length && binary[p[0]][p[1] + radius] == 0) atEdge = true;
-                if (p[1] - radius >= 0 && binary[p[0]][p[1] - radius] == 0) atEdge = true;
-
-                if (atEdge) break;
-                radius++;
-            }
-            totalWidth += radius * 2;
-            widthSamples++;
-        }
-
-        double avgWidth = widthSamples > 0 ? totalWidth / widthSamples : 2.0;
-        seg.aspectRatio = length / avgWidth;
-
-        // Circularity: area / (length^2) - lower means more elongated
-        seg.circularity = seg.area / (length * length + 0.000001);
-
-        // Texture: mean intensity and contrast from grayscale image
-        double sumIntensity = 0;
-        int pixelCount = 0;
-
-        for (int[] p : seg.pixels) {
-            sumIntensity += gray[p[0]][p[1]];
-            pixelCount++;
-        }
-
-        double meanIntensity = pixelCount > 0 ? sumIntensity / pixelCount : 0;
-
-        // Simple contrast = standard deviation of intensities
-        double sumSq = 0;
-        for (int[] p : seg.pixels) {
-            double diff = gray[p[0]][p[1]] - meanIntensity;
-            sumSq += diff * diff;
-        }
-        double contrast = pixelCount > 0 ? Math.sqrt(sumSq / pixelCount) : 0;
-        seg.textureContrast = contrast;
-    }
-
-    /* ==========================================================
-       OUTPUT
-       ========================================================== */
-
-    private void saveBinaryImage(int[][] img, String path) {
         try {
+
             int w = img.length;
             int h = img[0].length;
-            BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY);
+
+            BufferedImage out =
+                    new BufferedImage(w, h,
+                            BufferedImage.TYPE_BYTE_BINARY);
 
             for (int x = 0; x < w; x++) {
                 for (int y = 0; y < h; y++) {
+
                     int v = img[x][y] == 1 ? 255 : 0;
-                    out.setRGB(x, y, (v << 16) | (v << 8) | v);
+
+                    out.setRGB(x, y,
+                            (v << 16) | (v << 8) | v);
                 }
             }
+
             ImageIO.write(out, "png", new File(path));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
-    private void saveSegmentColourImage(int[][] skel, List<Segment> segments, String path) {
-        try {
-            int w = skel.length;
-            int h = skel[0].length;
-            BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-            Random rand = new Random(42);
-
-            for (Segment s : segments) {
-                int color = (rand.nextInt(256) << 16) | (rand.nextInt(256) << 8) | rand.nextInt(256);
-                for (int[] p : s.pixels) {
-                    img.setRGB(p[0], p[1], color);
-                }
-            }
-            ImageIO.write(img, "png", new File(path));
         } catch (Exception e) {
             e.printStackTrace();
         }

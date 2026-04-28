@@ -14,15 +14,15 @@ public class GraphTest {
         Graph<Node, Integer> graph = new AdjacencyListGraph<>();
 
         // Insert vertices (nodes with coordinates)
-        Vertex<Node> A = graph.insertVertex(new Node(1, 0, 0));
-        Vertex<Node> B = graph.insertVertex(new Node(2, 1, 0));
-        Vertex<Node> C = graph.insertVertex(new Node(3, 0, 1));
-        Vertex<Node> D = graph.insertVertex(new Node(4, 1, 1));
+        Vertex<Node> A = graph.insertVertex(new Node(0, 0));
+        Vertex<Node> B = graph.insertVertex(new Node(1, 0));
+        Vertex<Node> C = graph.insertVertex(new Node( 0, 1));
+        Vertex<Node> D = graph.insertVertex(new Node(1, 1));
 
         // -------------------------------
         // TEST DUPLICATE VERTEX HANDLING
         // -------------------------------
-        Vertex<Node> duplicateA = graph.insertVertex(new Node(1, 0, 0));
+        Vertex<Node> duplicateA = graph.insertVertex(new Node( 0, 0));
 
         System.out.println("Testing duplicate vertex insertion:");
         System.out.println("Total vertices (should NOT increase if handled properly): "
@@ -153,9 +153,9 @@ public class GraphTest {
         System.out.println("\n--- Testing GDD Similarity ---");
 
         AdjacencyListGraph<Node, Integer> triangleGraph = new AdjacencyListGraph<>();
-        Vertex<Node> T1 = triangleGraph.insertVertex(new Node(10, 0, 0));
-        Vertex<Node> T2 = triangleGraph.insertVertex(new Node(11, 1, 0));
-        Vertex<Node> T3 = triangleGraph.insertVertex(new Node(12, 0, 1));
+        Vertex<Node> T1 = triangleGraph.insertVertex(new Node( 0, 0));
+        Vertex<Node> T2 = triangleGraph.insertVertex(new Node( 1, 0));
+        Vertex<Node> T3 = triangleGraph.insertVertex(new Node( 0, 1));
         triangleGraph.insertEdge(T1, T2, 1);
         triangleGraph.insertEdge(T2, T3, 1);
         triangleGraph.insertEdge(T3, T1, 1);
@@ -166,11 +166,11 @@ public class GraphTest {
         System.out.println("Similarity of graph with itself: " + selfSimilarity + "%");
 
         AdjacencyListGraph<Node, Integer> houseShapeGraph = new AdjacencyListGraph<>();
-        Vertex<Node> H1 = houseShapeGraph.insertVertex(new Node(13, 0, 0));
-        Vertex<Node> H2 = houseShapeGraph.insertVertex(new Node(14, 1, 0));
-        Vertex<Node> H3 = houseShapeGraph.insertVertex(new Node(15, 1, 1));
-        Vertex<Node> H4 = houseShapeGraph.insertVertex(new Node(16, 0, 1));
-        Vertex<Node> H5 = houseShapeGraph.insertVertex(new Node(17, 1, 2));
+        Vertex<Node> H1 = houseShapeGraph.insertVertex(new Node( 0, 0));
+        Vertex<Node> H2 = houseShapeGraph.insertVertex(new Node( 1, 0));
+        Vertex<Node> H3 = houseShapeGraph.insertVertex(new Node( 1, 1));
+        Vertex<Node> H4 = houseShapeGraph.insertVertex(new Node( 0, 1));
+        Vertex<Node> H5 = houseShapeGraph.insertVertex(new Node( 1, 2));
         houseShapeGraph.insertEdge(H1, H2, 2);
         houseShapeGraph.insertEdge(H2, H3, 2);
         houseShapeGraph.insertEdge(H3, H4, 2);

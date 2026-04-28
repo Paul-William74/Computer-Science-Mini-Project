@@ -30,7 +30,7 @@ public class MainTest {
             System.out.println("Building vessel-segment graph...");
 
             AdjacencyListGraph<Node, Double> graph =
-                    processor.buildSegmentGraph(file);
+                    processor.buildNodeGraph(file);
 
             System.out.println("\n=== GRAPH STATISTICS ===");
             System.out.println("Vertices (segments): " + graph.numVertices());
