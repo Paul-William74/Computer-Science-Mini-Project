@@ -1,7 +1,5 @@
 package graph;
 
-import imageprocessing.Junction;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -11,11 +9,11 @@ import java.util.Objects;
  * corresponding to a meaningful object(vessel segment, lesion)
  */
 public class Node {
-    private int id;
+    private final int id;
 
     //Variables that represent position
-    private int x;
-    private int y;
+    private final int x;
+    private final int y;
 
     // variables that represent the features of a node for analysis (filled by Paul)
     private double texture;
@@ -25,10 +23,8 @@ public class Node {
 
     private int value; //1 = vessel, 0 = background
 
-    public List<int[]> pixels = new ArrayList<>(); ;
+    public List<int[]> pixels = new ArrayList<>();
 
-    public Junction junctionA;
-    public  Junction junctionB;
 
     private static int nextId=0;
 
@@ -77,18 +73,11 @@ public class Node {
         this.value = value;
     }
 
-    public void addPixel(int x, int y){
-        pixels.add(new int[]{x,y});
-    }
-
     /**
      * equals helps compare one Node with another to determine equality.
-     *
-     *
      * In the context of a node-based graph, two Node objects are considered equal
      * if they represent the same region in the graph (i.e., they have the same
      * id)
-     *
      * This method is critical for ensuring that sets, maps, and other data structures
      * do not store duplicate nodes for the same node.
      *
@@ -107,7 +96,6 @@ public class Node {
 
     /**
      * hashCode works out a hash code for this Node based on its id.
-     *
      * Hash codes are used by hash-based data structures (e.g., HashSet, HashMap)
      * to quickly determine uniqueness. By hashing only the x and y coordinates,
      * two Node objects representing the same pixel will have the same hash code,
