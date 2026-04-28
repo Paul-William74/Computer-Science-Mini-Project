@@ -1,5 +1,9 @@
 package graph;
 
+import imageprocessing.Junction;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -21,8 +25,15 @@ public class Node {
 
     private int value; //1 = vessel, 0 = background
 
-    public Node(int id, int x, int y) {
-        this.id = id;
+    public List<int[]> pixels = new ArrayList<>(); ;
+
+    public Junction junctionA;
+    public  Junction junctionB;
+
+    private static int nextId=0;
+
+    public Node(int x, int y) {
+        this.id=nextId++;
         this.x = x;
         this.y = y;
     }
@@ -64,6 +75,10 @@ public class Node {
 
     public void setValue(int value) {
         this.value = value;
+    }
+
+    public void addPixel(int x, int y){
+        pixels.add(new int[]{x,y});
     }
 
     /**
