@@ -520,4 +520,109 @@ public class ImageProcessor {
             e.printStackTrace();
         }
     }
+    private int countWhiteNeighbors(int[][] binary, int x, int y) {
+        int count = 0;
+
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+
+                if (dx == 0 && dy == 0) continue;
+
+                int nx = x + dx;
+                int ny = y + dy;
+
+                if (nx >= 0 && nx < binary.length && ny >= 0 && ny < binary[0].length) {
+                    if (binary[nx][ny] == 1) count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private java.util.List<int[]> getWhiteNeighbors(int[][] binary, int x, int y) {
+        java.util.List<int[]> neighbors = new java.util.ArrayList<>();
+
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+
+                if (dx == 0 && dy == 0) continue;
+
+                int nx = x + dx;
+                int ny = y + dy;
+
+                if (nx >= 0 && nx < binary.length && ny >= 0 && ny < binary[0].length) {
+                    if (binary[nx][ny] == 1) {
+                        neighbors.add(new int[]{nx, ny});
+                    }
+                }
+            }
+        }
+
+        return neighbors;
+    }
+
+    private void traceSegment(int[][] binary,
+                              int prevX, int prevY,
+                              int currX, int currY,
+                              Vertex<Node> startVertex,
+                              Map<String, Vertex<Node>> specialVertices,
+                              AdjacencyListGraph<Node, Integer> graph) {
+
+        int length = 1;
+
+        while (true) {
+            String key = currX + "," + currY;
+
+            if (specialVertices.containsKey(key)) {
+                Vertex<Node> endVertex = specialVertices.get(key);
+
+                if (!startVertex.equals(endVertex) && !graph.areaAdjacent(startVertex, endVertex)) {
+                    graph.insertEdge(startVertex, endVertex, length);
+                }
+
+                return;
+            }
+
+            java.util.List<int[]> neighbors = getWhiteNeighbors(binary, currX, currY);
+            java.util.List<int[]> nextSteps = new java.util.ArrayList<>();
+
+            for (int[] n : neighbors) {
+                if (!(n[0] == prevX && n[1] == prevY)) {
+                    nextSteps.add(n);
+                }
+            }
+
+            if (nextSteps.isEmpty()) return;
+            if (nextSteps.size() > 1) return;
+
+            prevX = currX;
+            prevY = currY;
+            currX = nextSteps.get(0)[0];
+            currY = nextSteps.get(0)[1];
+
+            length++;
+        }
+    }
+
+    private boolean isNearExistingSpecialVertex(Map<String, Vertex<Node>> specialVertices,
+                                                int x,
+                                                int y,
+                                                int minDistance) {
+
+        for (Vertex<Node> v : specialVertices.values()) {
+            Node n = v.getElement();
+
+            int dx = n.getX() - x;
+            int dy = n.getY() - y;
+
+            double distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < minDistance) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
