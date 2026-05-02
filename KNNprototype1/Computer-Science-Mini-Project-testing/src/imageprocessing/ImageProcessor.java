@@ -13,11 +13,11 @@ import java.util.Map;
 
 public class ImageProcessor {
 
-    private int lastVesselPixels = 0;
-    private int lastEndpoints = 0;
-    private int lastBranchPoints = 0;
-    private int lastGraphNodes = 0;
-    private int lastGraphEdges = 0;
+    private int lastBifurcationCount = 0;
+
+    public int getLastBifurcationCount() {
+        return lastBifurcationCount;
+    }
 
     public AdjacencyListGraph<Node, Integer> buildGraph(File file) {
         try {
@@ -37,18 +37,19 @@ public class ImageProcessor {
 
             int[][] skeleton = new Skeletonization(binary).getSkeleton();
 
-            lastVesselPixels = countVesselPixels(skeleton);
-            lastEndpoints = countEndpoints(skeleton);
-            lastBranchPoints = countBranchPoints(skeleton);
+            createOutputFolderIfNeeded();
+
+            saveBinaryImage(binary, "Datasets/output/binary.png");
+            saveBinaryImage(skeleton, "Datasets/output/skeleton.png");
+
+            lastBifurcationCount = countBifurcations(skeleton);
 
             AdjacencyListGraph<Node, Integer> graph = buildGraphFromBinary(skeleton);
 
-            lastGraphNodes = graph.numVertices();
-            lastGraphEdges = graph.numEdges();
-
             System.out.println("Threshold: " + threshold);
-            System.out.println("Graph built with nodes: " + lastGraphNodes);
-            System.out.println("Graph built with edges: " + lastGraphEdges);
+            System.out.println("Bifurcation count: " + lastBifurcationCount);
+            System.out.println("Graph built with nodes: " + graph.numVertices());
+            System.out.println("Graph built with edges: " + graph.numEdges());
 
             return graph;
 
@@ -57,24 +58,26 @@ public class ImageProcessor {
         }
     }
 
-    public int getLastVesselPixels() {
-        return lastVesselPixels;
+    private void createOutputFolderIfNeeded() {
+        File outputFolder = new File("Datasets/output");
+
+        if (!outputFolder.exists()) {
+            outputFolder.mkdirs();
+        }
     }
 
-    public int getLastEndpoints() {
-        return lastEndpoints;
-    }
+    private int countBifurcations(int[][] binary) {
+        int count = 0;
 
-    public int getLastBranchPoints() {
-        return lastBranchPoints;
-    }
+        for (int x = 1; x < binary.length - 1; x++) {
+            for (int y = 1; y < binary[0].length - 1; y++) {
+                if (binary[x][y] == 1 && countWhiteNeighbors(binary, x, y) >= 5) {
+                    count++;
+                }
+            }
+        }
 
-    public int getLastGraphNodes() {
-        return lastGraphNodes;
-    }
-
-    public int getLastGraphEdges() {
-        return lastGraphEdges;
+        return count;
     }
 
     private AdjacencyListGraph<Node, Integer> buildGraphFromBinary(int[][] binary) {
@@ -95,8 +98,8 @@ public class ImageProcessor {
                     if (degree == 1 || degree >= 5) {
                         if (!isNearExistingSpecialVertex(specialVertices, x, y, 6)) {
                             Node node = new Node(id++, x, y, 1);
-                            Vertex<Node> v = graph.insertVertex(node);
-                            specialVertices.put(x + "," + y, v);
+                            Vertex<Node> vertex = graph.insertVertex(node);
+                            specialVertices.put(x + "," + y, vertex);
                         }
                     }
                 }
@@ -105,14 +108,15 @@ public class ImageProcessor {
 
         for (Vertex<Node> startVertex : specialVertices.values()) {
             Node startNode = startVertex.getElement();
-            int sx = startNode.getX();
-            int sy = startNode.getY();
 
-            for (int[] neighbor : getWhiteNeighbors(binary, sx, sy)) {
+            int startX = startNode.getX();
+            int startY = startNode.getY();
+
+            for (int[] neighbor : getWhiteNeighbors(binary, startX, startY)) {
                 traceSegment(
                         binary,
-                        sx,
-                        sy,
+                        startX,
+                        startY,
                         neighbor[0],
                         neighbor[1],
                         startVertex,
@@ -125,59 +129,23 @@ public class ImageProcessor {
         return graph;
     }
 
-    private int countVesselPixels(int[][] binary) {
-        int count = 0;
-
-        for (int x = 0; x < binary.length; x++) {
-            for (int y = 0; y < binary[0].length; y++) {
-                if (binary[x][y] == 1) count++;
-            }
-        }
-
-        return count;
-    }
-
-    private int countEndpoints(int[][] binary) {
-        int count = 0;
-
-        for (int x = 1; x < binary.length - 1; x++) {
-            for (int y = 1; y < binary[0].length - 1; y++) {
-                if (binary[x][y] == 1 && countWhiteNeighbors(binary, x, y) == 1) {
-                    count++;
-                }
-            }
-        }
-
-        return count;
-    }
-
-    private int countBranchPoints(int[][] binary) {
-        int count = 0;
-
-        for (int x = 1; x < binary.length - 1; x++) {
-            for (int y = 1; y < binary[0].length - 1; y++) {
-                if (binary[x][y] == 1 && countWhiteNeighbors(binary, x, y) >= 5) {
-                    count++;
-                }
-            }
-        }
-
-        return count;
-    }
-
     private int countWhiteNeighbors(int[][] binary, int x, int y) {
         int count = 0;
 
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
 
-                if (dx == 0 && dy == 0) continue;
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
 
                 int nx = x + dx;
                 int ny = y + dy;
 
                 if (nx >= 0 && nx < binary.length && ny >= 0 && ny < binary[0].length) {
-                    if (binary[nx][ny] == 1) count++;
+                    if (binary[nx][ny] == 1) {
+                        count++;
+                    }
                 }
             }
         }
@@ -191,7 +159,9 @@ public class ImageProcessor {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
 
-                if (dx == 0 && dy == 0) continue;
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
 
                 int nx = x + dx;
                 int ny = y + dy;
@@ -208,8 +178,10 @@ public class ImageProcessor {
     }
 
     private void traceSegment(int[][] binary,
-                              int prevX, int prevY,
-                              int currX, int currY,
+                              int prevX,
+                              int prevY,
+                              int currX,
+                              int currY,
                               Vertex<Node> startVertex,
                               Map<String, Vertex<Node>> specialVertices,
                               AdjacencyListGraph<Node, Integer> graph) {
@@ -232,17 +204,23 @@ public class ImageProcessor {
             java.util.List<int[]> neighbors = getWhiteNeighbors(binary, currX, currY);
             java.util.List<int[]> nextSteps = new java.util.ArrayList<>();
 
-            for (int[] n : neighbors) {
-                if (!(n[0] == prevX && n[1] == prevY)) {
-                    nextSteps.add(n);
+            for (int[] neighbor : neighbors) {
+                if (!(neighbor[0] == prevX && neighbor[1] == prevY)) {
+                    nextSteps.add(neighbor);
                 }
             }
 
-            if (nextSteps.isEmpty()) return;
-            if (nextSteps.size() > 1) return;
+            if (nextSteps.isEmpty()) {
+                return;
+            }
+
+            if (nextSteps.size() > 1) {
+                return;
+            }
 
             prevX = currX;
             prevY = currY;
+
             currX = nextSteps.get(0)[0];
             currY = nextSteps.get(0)[1];
 
@@ -255,11 +233,11 @@ public class ImageProcessor {
                                                 int y,
                                                 int minDistance) {
 
-        for (Vertex<Node> v : specialVertices.values()) {
-            Node n = v.getElement();
+        for (Vertex<Node> vertex : specialVertices.values()) {
+            Node node = vertex.getElement();
 
-            int dx = n.getX() - x;
-            int dy = n.getY() - y;
+            int dx = node.getX() - x;
+            int dy = node.getY() - y;
 
             double distance = Math.sqrt(dx * dx + dy * dy);
 
@@ -271,19 +249,28 @@ public class ImageProcessor {
         return false;
     }
 
-    private int[][] convertToBinary(int[][] grayScale, int threshold) {
-        int width = grayScale.length;
-        int height = grayScale[0].length;
+    private void saveBinaryImage(int[][] binary, String path) {
+        try {
+            int width = binary.length;
+            int height = binary[0].length;
 
-        int[][] binary = new int[width][height];
+            BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
 
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                binary[x][y] = grayScale[x][y] > threshold ? 1 : 0;
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+
+                    int value = binary[x][y] == 1 ? 255 : 0;
+                    int rgb = (value << 16) | (value << 8) | value;
+
+                    img.setRGB(x, y, rgb);
+                }
             }
-        }
 
-        return binary;
+            ImageIO.write(img, "png", new File(path));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private int[][] convertToGrayScale(BufferedImage image) {
@@ -342,6 +329,21 @@ public class ImageProcessor {
         return result;
     }
 
+    private int[][] convertToBinary(int[][] grayScale, int threshold) {
+        int width = grayScale.length;
+        int height = grayScale[0].length;
+
+        int[][] binary = new int[width][height];
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                binary[x][y] = grayScale[x][y] > threshold ? 1 : 0;
+            }
+        }
+
+        return binary;
+    }
+
     private int[][] removeNoise(int[][] binary) {
         int width = binary.length;
         int height = binary[0].length;
@@ -355,7 +357,9 @@ public class ImageProcessor {
 
                 for (int i = -1; i <= 1; i++) {
                     for (int j = -1; j <= 1; j++) {
-                        if (binary[x + i][y + j] == 1) count++;
+                        if (binary[x + i][y + j] == 1) {
+                            count++;
+                        }
                     }
                 }
 

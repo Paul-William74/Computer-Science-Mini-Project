@@ -13,21 +13,24 @@ import java.io.File;
 
 public class MainUI extends JFrame {
 
-    private JLabel imagePreview;
+    private JLabel originalPreview;
+    private JLabel skeletonPreview;
+
     private JLabel resultLabel;
     private JLabel selectedFileLabel;
     private JLabel statusLabel;
 
-    private JLabel vesselScoreValue;
     private JLabel comparisonValue;
     private JLabel outcomeValue;
     private JLabel recommendationValue;
+    private JLabel bifurcationValue;
 
     private JTextArea explanationArea;
 
     private JButton loadButton;
     private JButton chooseButton;
     private JButton screenButton;
+
     private JProgressBar loadingBar;
 
     private File selectedFile;
@@ -39,9 +42,9 @@ public class MainUI extends JFrame {
     private final String[] loadingMessages = {
             "Preparing reference images...",
             "Reading retinal vessel patterns...",
-            "Comparing image structure...",
-            "Generating screening result...",
-            "Almost ready..."
+            "Building skeleton image...",
+            "Counting bifurcations...",
+            "Generating screening result..."
     };
 
     public MainUI() {
@@ -82,6 +85,7 @@ public class MainUI extends JFrame {
         text.add(subtitle);
 
         header.add(text, BorderLayout.WEST);
+
         return header;
     }
 
@@ -101,13 +105,14 @@ public class MainUI extends JFrame {
                 createRightPanel()
         );
 
-        splitPane.setResizeWeight(0.63);
-        splitPane.setDividerLocation(850);
+        splitPane.setResizeWeight(0.58);
+        splitPane.setDividerLocation(800);
         splitPane.setDividerSize(7);
         splitPane.setContinuousLayout(true);
         splitPane.setBorder(null);
 
         container.add(splitPane, BorderLayout.CENTER);
+
         return container;
     }
 
@@ -184,14 +189,14 @@ public class MainUI extends JFrame {
         JPanel metrics = new JPanel(new GridLayout(2, 2, 12, 12));
         metrics.setBackground(Color.WHITE);
 
-        vesselScoreValue = new JLabel("-");
         comparisonValue = new JLabel("-");
         outcomeValue = new JLabel("-");
         recommendationValue = new JLabel("-");
+        bifurcationValue = new JLabel("-");
 
-        metrics.add(metricCard("Vessel Detail Score", vesselScoreValue, new Color(224, 242, 254)));
         metrics.add(metricCard("Image Comparison", comparisonValue, new Color(219, 234, 254)));
         metrics.add(metricCard("Screening Outcome", outcomeValue, new Color(255, 247, 237)));
+        metrics.add(metricCard("Estimated Bifurcation Count", bifurcationValue, new Color(224, 242, 254)));
         metrics.add(metricCard("Recommendation", recommendationValue, new Color(255, 237, 213)));
 
         explanationArea = new JTextArea();
@@ -202,7 +207,7 @@ public class MainUI extends JFrame {
         explanationArea.setBackground(new Color(248, 250, 252));
         explanationArea.setText(
                 "Load the reference images, choose a retinal image, then run screening.\n\n" +
-                        "The system will compare the selected image against labelled reference examples."
+                        "After screening, the original image and skeletonized vessel structure will be displayed."
         );
 
         JScrollPane explanationScroll = new JScrollPane(explanationArea);
@@ -239,27 +244,36 @@ public class MainUI extends JFrame {
     }
 
     private JPanel createRightPanel() {
-        JPanel panel = new JPanel(new BorderLayout(14, 14));
+        JPanel panel = new JPanel(new GridLayout(2, 1, 12, 12));
         panel.setBackground(Color.WHITE);
-        panel.setBorder(cardBorder("Selected Retinal Image"));
-        panel.setPreferredSize(new Dimension(500, 700));
+        panel.setBorder(cardBorder("Image Preview"));
 
-        imagePreview = new JLabel("No image selected", SwingConstants.CENTER);
-        imagePreview.setOpaque(true);
-        imagePreview.setBackground(new Color(248, 250, 252));
-        imagePreview.setBorder(new LineBorder(new Color(203, 213, 225), 1));
-        imagePreview.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        originalPreview = previewLabel("Original image will appear here");
+        skeletonPreview = previewLabel("Skeletonized vessel structure will appear after screening");
 
-        panel.add(imagePreview, BorderLayout.CENTER);
-
-        JLabel note = new JLabel("The image is displayed for visual reference.");
-        note.setFont(new Font("SansSerif", Font.ITALIC, 13));
-        note.setForeground(new Color(75, 85, 99));
-        note.setBorder(new EmptyBorder(6, 6, 6, 6));
-
-        panel.add(note, BorderLayout.SOUTH);
+        panel.add(wrapPreview("Original Retinal Image", originalPreview));
+        panel.add(wrapPreview("Skeletonized Vessel Structure", skeletonPreview));
 
         return panel;
+    }
+
+    private JPanel wrapPreview(String title, JLabel label) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(new TitledBorder(title));
+        panel.add(label, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JLabel previewLabel(String text) {
+        JLabel label = new JLabel(text, SwingConstants.CENTER);
+        label.setOpaque(true);
+        label.setBackground(new Color(248, 250, 252));
+        label.setBorder(new LineBorder(new Color(203, 213, 225), 1));
+        label.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        label.setHorizontalAlignment(JLabel.CENTER);
+        label.setVerticalAlignment(JLabel.CENTER);
+        return label;
     }
 
     private Border cardBorder(String title) {
@@ -321,9 +335,15 @@ public class MainUI extends JFrame {
 
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             selectedFile = chooser.getSelectedFile();
+
             selectedFileLabel.setText("Selected image: " + selectedFile.getName());
             statusLabel.setText("Status: Image selected. Run screening when ready.");
-            showImage(selectedFile);
+
+            showImage(selectedFile, originalPreview);
+
+            skeletonPreview.setText("Skeletonized vessel structure will appear after screening");
+            skeletonPreview.setIcon(null);
+
             resetResults();
         }
     }
@@ -333,10 +353,10 @@ public class MainUI extends JFrame {
         resultLabel.setBackground(new Color(226, 232, 240));
         resultLabel.setForeground(new Color(30, 41, 59));
 
-        vesselScoreValue.setText("-");
         comparisonValue.setText("-");
         outcomeValue.setText("-");
         recommendationValue.setText("-");
+        bifurcationValue.setText("-");
 
         explanationArea.setText("The selected image is ready. Click Run Screening to generate the result.");
     }
@@ -357,7 +377,7 @@ public class MainUI extends JFrame {
 
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             private String prediction;
-            private int vesselDetailScore;
+            private int bifurcations;
 
             @Override
             protected Void doInBackground() {
@@ -365,14 +385,16 @@ public class MainUI extends JFrame {
                 Graph<Node, Integer> graph = processor.buildGraph(selectedFile);
 
                 prediction = classifier.predict(graph);
-                vesselDetailScore = processor.getLastVesselPixels();
+                bifurcations = processor.getLastBifurcationCount();
 
                 return null;
             }
 
             @Override
             protected void done() {
-                updateResults(prediction, vesselDetailScore);
+                updateResults(prediction, bifurcations);
+                showImage(new File("Datasets/output/skeleton.png"), skeletonPreview);
+
                 setLoading(false, "Status: Screening completed.");
                 setButtonsEnabled(true);
             }
@@ -381,10 +403,10 @@ public class MainUI extends JFrame {
         worker.execute();
     }
 
-    private void updateResults(String prediction, int vesselDetailScore) {
+    private void updateResults(String prediction, int bifurcations) {
         boolean healthy = prediction.equalsIgnoreCase("healthy");
 
-        vesselScoreValue.setText(String.valueOf(vesselDetailScore));
+        bifurcationValue.setText(String.valueOf(bifurcations));
 
         if (healthy) {
             resultLabel.setText("Result: HEALTHY PATTERN DETECTED");
@@ -397,9 +419,9 @@ public class MainUI extends JFrame {
 
             explanationArea.setText(
                     "The selected retinal image was compared with labelled reference images.\n\n" +
-                            "Based on the retinal vessel pattern, the image most closely matched the healthy reference examples.\n\n" +
-                            "The vessel detail score is " + vesselDetailScore + ". This score describes how much vessel-like structure was detected in the image. " +
-                            "It is used as supporting descriptive information, not as the only reason for the result.\n\n" +
+                            "The top preview shows the original retinal image. The bottom preview shows the skeletonized vessel structure created during image processing.\n\n" +
+                            "The system detected an estimated " + bifurcations + " bifurcation points. Bifurcations are vessel branching points where the vessel structure splits.\n\n" +
+                            "Based on the overall vessel pattern, this image most closely matched the healthy reference examples.\n\n" +
                             "This screening result is generated by the system and should not replace professional medical assessment."
             );
 
@@ -414,23 +436,29 @@ public class MainUI extends JFrame {
 
             explanationArea.setText(
                     "The selected retinal image was compared with labelled reference images.\n\n" +
-                            "Based on the retinal vessel pattern, the image most closely matched the diseased reference examples.\n\n" +
-                            "The vessel detail score is " + vesselDetailScore + ". This score describes how much vessel-like structure was detected in the image. " +
-                            "It is used as supporting descriptive information, not as the only reason for the result.\n\n" +
+                            "The top preview shows the original retinal image. The bottom preview shows the skeletonized vessel structure created during image processing.\n\n" +
+                            "The system detected " + bifurcations + " bifurcation points. Bifurcations are vessel branching points where the vessel structure splits.\n\n" +
+                            "Based on the overall vessel pattern, this image most closely matched the diseased reference examples and should be reviewed further.\n\n" +
                             "This screening result is generated by the system and should not replace professional medical assessment."
             );
         }
     }
 
-    private void showImage(File file) {
+    private void showImage(File file, JLabel label) {
         try {
             BufferedImage img = ImageIO.read(file);
 
-            int labelWidth = imagePreview.getWidth();
-            int labelHeight = imagePreview.getHeight();
+            if (img == null) {
+                label.setText("Image preview not available");
+                label.setIcon(null);
+                return;
+            }
+
+            int labelWidth = label.getWidth();
+            int labelHeight = label.getHeight();
 
             if (labelWidth <= 0) labelWidth = 500;
-            if (labelHeight <= 0) labelHeight = 650;
+            if (labelHeight <= 0) labelHeight = 320;
 
             double scale = Math.min(
                     (double) labelWidth / img.getWidth(),
@@ -442,12 +470,12 @@ public class MainUI extends JFrame {
 
             Image scaled = img.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
 
-            imagePreview.setText("");
-            imagePreview.setIcon(new ImageIcon(scaled));
+            label.setText("");
+            label.setIcon(new ImageIcon(scaled));
 
         } catch (Exception e) {
-            imagePreview.setText("Image preview not available");
-            imagePreview.setIcon(null);
+            label.setText("Image preview not available");
+            label.setIcon(null);
         }
     }
 
