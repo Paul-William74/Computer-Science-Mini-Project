@@ -1,5 +1,7 @@
 package graph;
 
+import graph.adt.MyList;
+
 import java.util.List;
 
 /**
@@ -14,8 +16,8 @@ public interface Graph<V, E>{
     int numVertices();
     int numEdges();
 
-    List<Vertex<V>> vertices();
-    List<Edge<E>> edges();
+    MyList<Vertex<V>> vertices();
+    MyList<Edge<E>> edges();
 
     Vertex<V> insertVertex(V value);
     Edge<E> insertEdge(Vertex<V> u, Vertex<V> v, E value);
@@ -23,16 +25,18 @@ public interface Graph<V, E>{
     void removeVertex(Vertex<V> v);
     void removeEdge(Vertex<V> u, Vertex<V> v);
 
-    List<Edge<E>> outgoingEdges(Vertex<V> v);
+    MyList<Edge<E>> outgoingEdges(Vertex<V> v);
 
     Vertex<V> opposite(Vertex<V> v,Edge<E> e);
 
-    List<Vertex<V>> endVertices(Edge<E> e);
+    MyList<Vertex<V>> endVertices(Edge<E> e);
 
     int degree(Vertex<V> v);
 
     boolean areaAdjacent(Vertex<V> u, Vertex<V> v);
 
     //Extra utility method to help with GDD implementation
-    List<Vertex<V>> getNeighbors(Vertex<V> v);
+    MyList<Vertex<V>> getNeighbors(Vertex<V> v);
+
+    Edge<E> getEdge(Vertex<V> u, Vertex<V> v);
 }

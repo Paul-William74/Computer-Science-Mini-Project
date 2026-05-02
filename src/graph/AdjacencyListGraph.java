@@ -1,6 +1,11 @@
 package graph;
 
-import java.util.*;
+import graph.adt.MyList;
+import graph.adt.MyMap;
+import graph.implementation.MyArrayList;
+import graph.implementation.MyHashMap;
+
+//import java.util.*;
 
 /**
 
@@ -17,14 +22,12 @@ import java.util.*;
 public class AdjacencyListGraph<V, E> implements Graph<V, E> {
 
     // Maps each vertex to its list of directly connected edges
-    private Map<Vertex<V>, List<Edge<E>>> adjMap = new HashMap<>();
-
-    private Map<Vertex<V>, Set<Vertex<V>>> adjacencySet = new HashMap<>();
+    private MyMap<Vertex<V>, MyList<Edge<E>>> adjMap = new MyHashMap<>();
 
     // Stores all edges in the graph for quick access
-    private List<Edge<E>> edgeList = new ArrayList<>();
+    private MyList<Edge<E>> edgeList = new MyArrayList<>();
 
-    private Map<V, Vertex<V>> vertexMap = new HashMap<>();
+    private MyMap<V, Vertex<V>> vertexMap = new MyHashMap<>();
 
 
 
@@ -51,8 +54,8 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @return - a keySet which contains all the keys or vertices in the graph
      */
     @Override
-    public List<Vertex<V>> vertices() {
-        return new ArrayList<>(adjMap.keySet());
+    public MyList<Vertex<V>> vertices() {
+        return adjMap.keySet();//new MyArrayList<>(adjMap.keySet());
     }
 
     /**
@@ -60,7 +63,7 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @return - all the edges in a graph
      */
     @Override
-    public List<Edge<E>> edges() {
+    public MyList<Edge<E>> edges() {
         return edgeList;
     }
 
@@ -73,15 +76,13 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
     @Override
     public Vertex<V> insertVertex(V value) {
 
-        //Code to prevent duplicate vertices
         if (vertexMap.containsKey(value)) {
             return vertexMap.get(value);
         }
 
         Vertex<V> v = new Vertex<>(value);
 
-        adjMap.put(v, new ArrayList<>());
-        adjacencySet.put(v, new HashSet<>());
+        adjMap.put(v, new MyArrayList<>());
         vertexMap.put(value, v);
 
         return v;
@@ -98,26 +99,26 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
     @Override
     public Edge<E> insertEdge(Vertex<V> u, Vertex<V> v, E value) {
 
-        //Code to check if edge already exists
-        Edge<E> existingEdge = getEdge(u, v);
+        if (u == null || v == null) return null;
+        if (!adjMap.containsKey(u) || !adjMap.containsKey(v)) return null;
 
-        if (existingEdge != null) {
-            //Code to update the weight if necessary
-            existingEdge.setElement(value);
+        if (u.equals(v)) return null; // optional: prevents self-loops if not allowed
 
-            return existingEdge;
+        Edge<E> existing = getEdge(u, v);
+        if (existing != null) {
+            existing.setElement(value);
+            return existing;
         }
 
-        //Code to create a new edge
         Edge<E> e = new Edge<>(u, v, value);
 
-        //we add an edge to the adjacency list of each vertix
-        adjMap.get(u).add(e);
-        adjMap.get(v).add(e);
+        MyList<Edge<E>> listU = adjMap.get(u);
+        MyList<Edge<E>> listV = adjMap.get(v);
 
-        adjacencySet.get(u).add(v);
-        adjacencySet.get(v).add(u);
+        if (listU == null || listV == null) return null;
 
+        listU.add(e);
+        listV.add(e);
         edgeList.add(e);
 
         return e;
@@ -130,19 +131,28 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
     @SuppressWarnings("unchecked")
     @Override
     public void removeVertex(Vertex<V> v) {
-        //Code to make a copy of the adjacency list so we don't modify it while iterating
-        List<Edge<E>> edgesCopy = new ArrayList<>(adjMap.get(v));
 
-        // Remove each edge connected to v
-        for (Edge<E> e : edgesCopy) {
-            removeEdge((Vertex<V>) e.getU(), (Vertex<V>) e.getV());
+        if (!adjMap.containsKey(v)) return;
+
+        MyList<Edge<E>> edges = adjMap.get(v);
+        if (edges != null) {
+            for (int i = edges.size() - 1; i >= 0; i--) {
+                Edge<E> e = edges.get(i);
+                removeEdge((Vertex<V>) e.getU(), (Vertex<V>) e.getV());
+            }
         }
 
         adjMap.remove(v);
-        adjacencySet.remove(v);
 
-        //vertexMap.values().remove(v);
-        vertexMap.values().removeIf(vertex -> vertex.equals(v));
+        // keep vertexMap in sync
+        MyList<V> keys = vertexMap.keySet();
+        for (int i = 0; i < keys.size(); i++) {
+            V key = keys.get(i);
+            if (vertexMap.get(key).equals(v)) {
+                vertexMap.remove(key);
+                break;
+            }
+        }
     }
 
     /**
@@ -152,40 +162,28 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public void removeEdge(Vertex<V> u, Vertex<V> v) {
-        // code to get adjacency lists
-        List<Edge<E>> edgesU = adjMap.get(u);
-        List<Edge<E>> edgesV = adjMap.get(v);
 
-        if (edgesU == null && edgesV == null) return; // no edge exists
+        if (u == null || v == null) return;
+        if (!adjMap.containsKey(u) || !adjMap.containsKey(v)) return;
 
-        Edge<E> edgeToRemove = null;
+        Edge<E> target = getEdge(u, v);
+        if (target == null) return;
 
-        // Find the edge in u's list
+        MyList<Edge<E>> edgesU = adjMap.get(u);
+        MyList<Edge<E>> edgesV = adjMap.get(v);
+
         if (edgesU != null) {
-            for (Edge<E> e : edgesU) {
-                if ((e.getU().equals(u) && e.getV().equals(v)) || (e.getU().equals(v) && e.getV().equals(u))) {
-                    edgeToRemove = e;
-                    break;
-                }
-            }
-            if (edgeToRemove != null) {
-                edgesU.remove(edgeToRemove); // remove from u's adjacency list
-            }
+            edgesU.remove(target);
         }
 
-        // Remove the same edge from v's list
-        if (edgesV != null && edgeToRemove != null) {
-            edgesV.remove(edgeToRemove);
+        if (edgesV != null) {
+            edgesV.remove(target);
         }
 
-        // code to remove edge from edgeList as well
-        if (edgeList != null && edgeToRemove != null) {
-            edgeList.remove(edgeToRemove);
-        }
-
-        adjacencySet.get(u).remove(v);
-        adjacencySet.get(v).remove(u);
+        edgeList.remove(target);
     }
+
+
 
     /**
      * outgoingEdges returns all the edges next to the target vertex
@@ -193,7 +191,7 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @return
      */
     @Override
-    public List<Edge<E>> outgoingEdges(Vertex<V> v) {
+    public MyList<Edge<E>> outgoingEdges(Vertex<V> v) {
         return adjMap.get(v);
     }
 
@@ -222,8 +220,11 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @return
      */
     @Override
-    public List<Vertex<V>> endVertices(Edge<E> e) {
-        return List.of((Vertex<V>) e.getU(), (Vertex<V>) e.getV());
+    public MyList<Vertex<V>> endVertices(Edge<E> e) {
+        MyList<Vertex<V>> list = new MyArrayList<>();
+        list.add((Vertex<V>) e.getU());
+        list.add((Vertex<V>) e.getV());
+        return list;
     }
 
     /**
@@ -233,8 +234,11 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public int degree(Vertex<V> v) {
-        return adjacencySet.get(v).size();
-        //adjMap.get(v).size();
+
+        if (v == null || !adjMap.containsKey(v)) return 0;
+
+        MyList<Edge<E>> edges = adjMap.get(v);
+        return (edges == null) ? 0 : edges.size();
     }
 
     /**
@@ -245,16 +249,7 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      */
     @Override
     public boolean areaAdjacent(Vertex<V> u, Vertex<V> v) {
-        /*
-        for (Edge<E> e : adjMap.get(u)) {
-            if (opposite(u, e).equals(v)) {
-                return true;
-            }
-        }
-        return false;
-        */
-        Set<Vertex<V>> neighbors = adjacencySet.get(u);
-        return neighbors != null && neighbors.contains(v);
+        return getEdge(u, v) != null;
     }
 
     /**
@@ -267,18 +262,26 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @return - all vertices next to v
      */
     @Override
-    public List<Vertex<V>> getNeighbors(Vertex<V> v) {
-        /*
-        List<Vertex<V>> neighbors = new ArrayList<>();
+    public MyList<Vertex<V>> getNeighbors(Vertex<V> v) {
 
-        for (Edge<E> e : adjMap.get(v)) {
-            neighbors.add(opposite(v, e));
+        MyList<Vertex<V>> neighbors = new MyArrayList<>();
+
+        if (v == null || !adjMap.containsKey(v)) return neighbors;
+
+        MyList<Edge<E>> edges = adjMap.get(v);
+        if (edges == null) return neighbors;
+
+        for (int i = 0; i < edges.size(); i++) {
+
+            Edge<E> e = edges.get(i);
+            Vertex<V> oppositeVertex = opposite(v, e);
+
+            if (oppositeVertex != null) {
+                neighbors.add(oppositeVertex);
+            }
         }
-        return neighbors;
 
-         */
-        //return new ArrayList<>(adjacencySet.get(v));
-        return new ArrayList<>(adjacencySet.getOrDefault(v, Collections.emptySet()));
+        return neighbors;
     }
 
 
@@ -298,9 +301,34 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * @param v - the other endpoint vertex
      * @return - the edge object connecting u and v, or null if no such edge exists
      */
+    @Override
     public Edge<E> getEdge(Vertex<V> u, Vertex<V> v) {
-        for (Edge<E> e : adjMap.get(u)) {
-            if (opposite(u, e).equals(v)) {
+
+        if (u == null || v == null) return null;
+        if (!adjMap.containsKey(u)) return null;
+
+        MyList<Edge<E>> edges = adjMap.get(u);
+        if (edges == null) return null;
+
+        for (int i = 0; i < edges.size(); i++) {
+
+            Edge<E> e = edges.get(i);
+
+            Vertex<V> a = (Vertex<V>) e.getU();
+            Vertex<V> b = (Vertex<V>) e.getV();
+
+            // 🔍 DEBUG MODE
+            if (a == null || b == null) {
+                System.out.println("NULL EDGE FOUND");
+                continue;
+            }
+
+            boolean match =
+                    (a == u && b == v) ||
+                            (a == v && b == u);
+
+            if (match) {
+                System.out.println("EDGE FOUND: " + u.getElement() + " <-> " + v.getElement());
                 return e;
             }
         }
@@ -320,17 +348,17 @@ public class AdjacencyListGraph<V, E> implements Graph<V, E> {
      * between nodes
      */
     public E getEdgeWeight(Vertex<V> u, Vertex<V> v) {
-        List<Edge<E>> edges = adjMap.get(u); // adjacency list of u
-        if (edges != null) {
-            for (Edge<E> e : edges) {
-                // Check if edge connects u and v (order doesn't matter for undirected graph however due to how u
-                // and v are defined in Edge class, 2 conditions are necessary)
-                if ((e.getU().equals(u) && e.getV().equals(v)) || (e.getU().equals(v) && e.getV().equals(u))) {
-                    return e.getElement(); // return weight/element
-                }
-            }
+        Edge<E> e = getEdge(u, v);
+
+        if (e != null) {
+            return e.getElement();
         }
-        return null; // edge not found
+
+        return null;
+    }
+
+    private boolean hasVertexInternal(Vertex<V> v) {
+        return adjMap.containsKey(v);
     }
 
 }

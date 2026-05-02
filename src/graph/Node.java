@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Node represents a segmented region in the graph with each node
- * corresponding to a meaningful object(vessel segment, lesion)
+ * Node represents a pixel in the skeletonized image.
+ * Each node corresponds to a vessel pixel.
+ *
  */
 public class Node {
     private final int id;
@@ -15,16 +16,9 @@ public class Node {
     private final int x;
     private final int y;
 
-    // variables that represent the features of a node for analysis (filled by Paul)
-    private double texture;
-    private double area;
-    private double circularity;
-    private double aspectRatio;
+    //private int value; //1 = vessel, 0 = background
 
-    private int value; //1 = vessel, 0 = background
-
-    public List<int[]> pixels = new ArrayList<>();
-
+    //public List<int[]> pixels = new ArrayList<>();
 
     private static int nextId=0;
 
@@ -46,32 +40,15 @@ public class Node {
         return y;
     }
 
-    public double getTexture() {return texture;}
-    public double getArea() { return area;}
-    public double getCircularity() { return circularity;}
-    public double getAspectRatio() { return aspectRatio;}
+    /*
     public int getValue() {
         return value;
-    }
-
-    public void setArea(double area) {
-        this.area = area;
-    }
-    public void setCircularity(double circularity) {
-        this.circularity = circularity;
-    }
-
-    public void setAspectRatio(double aspectRatio) {
-        this.aspectRatio = aspectRatio;
-    }
-
-    public void setTexture(double texture) {
-        this.texture = texture;
     }
 
     public void setValue(int value) {
         this.value = value;
     }
+    */
 
     /**
      * equals helps compare one Node with another to determine equality.
@@ -90,7 +67,7 @@ public class Node {
         if (this == o) return true;
         if (!(o instanceof Node)) return false;
         Node other = (Node) o;
-        return id == other.id;
+        return x  == other.x && y == other.y;//id == other.id;
         //x  == other.x && y == other.y;
     }
 
@@ -106,7 +83,7 @@ public class Node {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(x,y);
     }
 
     @Override

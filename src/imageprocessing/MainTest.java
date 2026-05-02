@@ -46,11 +46,7 @@ public class MainTest {
 
                 System.out.printf(
                         "Segment %d | Area=%.1f | Circ=%.4f | Aspect=%.2f | Texture=%.3f%n",
-                        n.getId(),
-                        n.getArea(),
-                        n.getCircularity(),
-                        n.getAspectRatio(),
-                        n.getTexture()
+                        n.getId()
                 );
 
                 shown++;
