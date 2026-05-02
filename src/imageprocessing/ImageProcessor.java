@@ -322,11 +322,6 @@ public class ImageProcessor {
 
             Node n = new Node(cx, cy);
 
-            n.setArea(cluster.size());
-            n.setCircularity(1);
-            n.setAspectRatio(1);
-            n.setTexture(1);
-
             nodes.add(n);
         }
 

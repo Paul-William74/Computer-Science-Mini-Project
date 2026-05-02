@@ -2,6 +2,15 @@ package graph;
 
 import java.util.*;
 
+import graph.adt.MyMap;
+import graph.adt.MyQueue;
+import graph.adt.MySet;
+import graph.adt.MyList;
+import graph.implementation.MyArrayList;
+import graph.implementation.MyHashMap;
+import graph.implementation.MyLinkedQueue;
+import graph.implementation.MyHashSet;
+
 
 /**
  * A utility class that defines and implements graph algorithms like DFS or BFS
@@ -22,24 +31,32 @@ public class GraphAlgorithms {
      * @param <V> - the type of data stored at vertices
      * @param <E> - the type of data stored at Edges
      */
-    public static <V, E> void DFS(Graph<V, E> g, Vertex<V> u, Set<Vertex<V>> visited,
-                                  Map<Vertex<V>, Vertex<V>> parent) {
+    public static <V, E> void DFS(
+            Graph<V, E> g,
+            Vertex<V> u,
+            MySet<Vertex<V>> visited,
+            MyMap<Vertex<V>, Vertex<V>> parent
+    ) {
 
-        visited.add(u); //keeps track of visited vertices
+        if (u == null || visited.contains(u)) return;
 
-        /*
-        for each loop iterates through all edges connected to a vertex, and for each
-        unvisited neighbor, it records the current vertex as it's parent and
-        recursively performs DFS from that neighbor
-         */
-        for (Edge<E> e : g.outgoingEdges(u)) {
+        visited.add(u);
+
+        MyList<Edge<E>> edges = g.outgoingEdges(u);
+        if (edges == null) return;
+
+        for (int i = 0; i < edges.size(); i++) {
+            Edge<E> e = edges.get(i);
+
             Vertex<V> v = g.opposite(u, e);
-            if (!visited.contains(v)) {
-                parent.put(v, u); // explicitly mark u as parent of v
+
+            if (v != null && !visited.contains(v)) {
+                parent.put(v, u);
                 DFS(g, v, visited, parent);
             }
         }
     }
+
 
     /**
      * This method is repsonsible for Breadth-First Search(BFS), it allows one to explore a graph
@@ -53,34 +70,45 @@ public class GraphAlgorithms {
      * @param <V> - the type of data stored at vertices
      * @param <E> - the type of data stored at Edges
      */
-    public static <V,E> void BFS(Graph<V,E> g, Vertex<V> start, Set<Vertex<V>> visited,
-                                            Map<Vertex<V>, Vertex<V>> parent, Map<Vertex<V>, Integer> distance) {
+    public static <V, E> void BFS(
+            Graph<V, E> g,
+            Vertex<V> start,
+            MySet<Vertex<V>> visited,
+            MyMap<Vertex<V>, Vertex<V>> parent,
+            MyMap<Vertex<V>, Integer> distance
+    ) {
 
-        Queue<Vertex<V>> queue = new LinkedList<>();
+        if (start == null) return;
+
+        MyQueue<Vertex<V>> queue = new MyLinkedQueue<>();
 
         visited.add(start);
         distance.put(start, 0);
-        queue.add(start);
+        queue.enqueue(start);
 
         while (!queue.isEmpty()) {
-            Vertex<V> u = queue.poll();
 
-            for (Edge<E> e : g.outgoingEdges(u)) {
-                Vertex<V> v = g.opposite(u, e);
+            Vertex<V> u = queue.dequeue();
 
-                if (!visited.contains(v)) {
+            MyList<Edge<E>> edges = g.outgoingEdges(u);
+            if (edges == null) continue;
+
+            for (int i = 0; i < edges.size(); i++) {
+
+                Vertex<V> v = g.opposite(u, edges.get(i));
+
+                if (v != null && !visited.contains(v)) {
+
                     visited.add(v);
                     parent.put(v, u);
-
-                    //distance = parent's distance + 1
                     distance.put(v, distance.get(u) + 1);
-                    queue.add(v);
+
+                    queue.enqueue(v);
                 }
             }
-
         }
-
     }
+
 
     /**
      * A method that reconstructs the path from beginning to end using the parent map
@@ -98,23 +126,36 @@ public class GraphAlgorithms {
      *  *         Returns an empty list if the end vertex is unreachable.
      * @param <V> - the type of data stored at vertices
      */
-    public static <V> List<Vertex<V>> constructPath(Vertex<V> start, Vertex<V> end,
-                                                    Map<Vertex<V>, Vertex<V>> parent) {
-        List<Vertex<V>> path = new LinkedList<>();
+    public static <V> MyList<Vertex<V>> constructPath(
+            Vertex<V> start,
+            Vertex<V> end,
+            MyMap<Vertex<V>, Vertex<V>> parent
+    ) {
 
-        //If the end is not reachable
-        if (!parent.containsKey(end) && !start.equals(end)) {
+        MyList<Vertex<V>> path = new MyArrayList<>();
+
+        if (start == null || end == null) return path;
+
+        // unreachable check
+        if (!start.equals(end) && parent.get(end) == null) {
             return path;
         }
 
-        Vertex<V> current = end; // <-- start from end
+        Vertex<V> current = end;
 
         while (current != null) {
-            path.add(0,current); //add to front to reverse path
+            path.add(current); // temporarily reversed
             current = parent.get(current);
         }
 
-        return path;
+        // reverse manually (since no Collections.reverse)
+        MyList<Vertex<V>> reversed = new MyArrayList<>();
+
+        for (int i = path.size() - 1; i >= 0; i--) {
+            reversed.add(path.get(i));
+        }
+
+        return reversed;
     }
 
     /**
@@ -131,18 +172,19 @@ public class GraphAlgorithms {
      * @param <V> - the type of data stored at vertices
      * @param <E> - the type of data stored at Edges
      */
-    public static <V,E> boolean isConnected(Graph<V,E> g) {
-        List<Vertex<V>> vertices = g.vertices();
+    public static <V, E> boolean isConnected(Graph<V, E> g) {
 
-        if (vertices.isEmpty()) {
+        MyList<Vertex<V>> vertices = g.vertices();
+
+        if (vertices == null || vertices.size() == 0) {
             return true;
         }
 
-        Set<Vertex<V>> visited = new HashSet<>();
-        Map<Vertex<V>, Vertex<V>> parent = new HashMap<>();
-        Map<Vertex<V>, Integer> distance = new HashMap<>();
+        MySet<Vertex<V>> visited = new MyHashSet<>();
+        MyMap<Vertex<V>, Vertex<V>> parent = new MyHashMap<>();
+        MyMap<Vertex<V>, Integer> distance = new MyHashMap<>();
 
-        BFS(g, vertices.get(0), visited, parent, distance);
+        DFS(g, vertices.get(0), visited, parent);
 
         return visited.size() == g.numVertices();
     }
