@@ -521,6 +521,7 @@ public class ImageProcessor {
         }
     }
     private int countWhiteNeighbors(int[][] binary, int x, int y) {
+
         int count = 0;
 
         for (int dx = -1; dx <= 1; dx++) {
