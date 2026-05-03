@@ -38,12 +38,16 @@ public class GraphAlgorithms {
             MyMap<Vertex<V>, Vertex<V>> parent
     ) {
 
-        if (u == null || visited.contains(u)) return;
+        if (u == null || visited.contains(u)){
+            return;
+        }
 
         visited.add(u);
 
         MyList<Edge<E>> edges = g.outgoingEdges(u);
-        if (edges == null) return;
+        if (edges == null){
+            return;
+        }
 
         for (int i = 0; i < edges.size(); i++) {
             Edge<E> e = edges.get(i);
@@ -78,7 +82,9 @@ public class GraphAlgorithms {
             MyMap<Vertex<V>, Integer> distance
     ) {
 
-        if (start == null) return;
+        if (start == null){
+            return;
+        }
 
         MyQueue<Vertex<V>> queue = new MyLinkedQueue<>();
 
@@ -91,7 +97,9 @@ public class GraphAlgorithms {
             Vertex<V> u = queue.dequeue();
 
             MyList<Edge<E>> edges = g.outgoingEdges(u);
-            if (edges == null) continue;
+            if (edges == null){
+                continue;
+            }
 
             for (int i = 0; i < edges.size(); i++) {
 
@@ -134,9 +142,10 @@ public class GraphAlgorithms {
 
         MyList<Vertex<V>> path = new MyArrayList<>();
 
-        if (start == null || end == null) return path;
+        if (start == null || end == null){
+            return path;
+        }
 
-        // unreachable check
         if (!start.equals(end) && parent.get(end) == null) {
             return path;
         }
@@ -144,11 +153,10 @@ public class GraphAlgorithms {
         Vertex<V> current = end;
 
         while (current != null) {
-            path.add(current); // temporarily reversed
+            path.add(current);
             current = parent.get(current);
         }
 
-        // reverse manually (since no Collections.reverse)
         MyList<Vertex<V>> reversed = new MyArrayList<>();
 
         for (int i = path.size() - 1; i >= 0; i--) {
